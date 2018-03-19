@@ -1,0 +1,32 @@
+[package]
+publish = false
+name = "imdb-index"
+version = "0.0.1"  #:version
+authors = ["Andrew Gallant <jamslam@gmail.com>"]
+description = """
+A library for indexing and searching IMDb using information retrieval.
+"""
+documentation = "https://github.com/BurntSushi/imdb-rename"
+homepage = "https://github.com/BurntSushi/imdb-rename"
+repository = "https://github.com/BurntSushi/imdb-rename"
+readme = "README.md"
+keywords = ["imdb", "movie", "index", "search"]
+license = "Unlicense/MIT"
+
+[dependencies]
+byteorder = "1"
+csv = "1.0.0-beta.5"
+failure = "0.1"
+fnv = "1"
+fst = "0.3"
+lazy_static = "1"
+log = { version = "0.4", features = ["std"] }
+memmap = "0.6"
+regex = "0.2"
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+strsim = "0.7"
+
+[dev-dependencies]
+tempdir = "0.3.7"

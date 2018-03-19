@@ -1,0 +1,32 @@
+[package]
+publish = false
+name = "imdb-rename"
+version = "0.0.1"
+authors = ["Andrew Gallant <jamslam@gmail.com>"]
+description = """
+A command line utility for searching IMDb and renaming your media files.
+"""
+documentation = "https://github.com/BurntSushi/imdb-rename"
+homepage = "https://github.com/BurntSushi/imdb-rename"
+repository = "https://github.com/BurntSushi/imdb-rename"
+readme = "README.md"
+keywords = ["imdb", "movie", "index", "search", "name"]
+license = "Unlicense/MIT"
+
+[workspace]
+members = ["imdb-eval", "imdb-index"]
+
+[dependencies]
+clap = "2"
+failure = "0.1"
+flate2 = "1"
+imdb-index = { version = "0.0.1", path = "imdb-index" }
+lazy_static = "1"
+log = { version = "0.4", features = ["std"] }
+regex = "0.2"
+reqwest = "0.8"
+tabwriter = "1"
+walkdir = "2"
+
+[profile.release]
+debug = true

@@ -1,0 +1,103 @@
+[[task]]
+query = "the matrix"
+answer = "tt0133093"
+
+[[task]]
+query = "homey the clown"
+answer = "tt0701128"
+
+[[task]]
+query = "homer loves"
+answer = "tt0773646"
+
+[[task]]
+query = "the matrix: revolutions"
+answer = "tt0242653"
+
+[[task]]
+query = "troy"
+answer = "tt0332452"
+
+[[task]]
+query = "o"
+answer = "tt0184791"
+
+[[task]]
+query = "love and basketball"
+answer = "tt0199725"
+
+[[task]]
+query = "the last one"
+# This is a tricky one, since there are many many things named "The Last One,"
+# and the actual thing we're looking for is "The Last One: Part 2". (There is
+# also "The Last One: Part 1".)
+answer = "tt0583434"
+
+[[task]]
+# There is no hyphen in the name of this movie.
+query = "pre-destination"
+answer = "tt2397535"
+
+[[task]]
+query = "1 magic christmas"
+answer = "tt0089731"
+
+[[task]]
+query = "xmen the last stand"
+answer = "tt0376994"
+
+[[task]]
+query = "todliche aura"
+answer = "tt0583427"
+
+[[task]]
+query = "her"
+answer = "tt1798709"
+
+[[task]]
+query = "its a wonderful life"
+answer = "tt0038650"
+
+[[task]]
+query = "jason born"
+answer = "tt4196776"
+
+[[task]]
+query = "cpt america first avenger"
+answer = "tt0458339"
+
+[[task]]
+query = "batman vs superman dawn justice"
+answer = "tt2975590"
+
+[[task]]
+query = "nightmare before christmas"
+answer = "tt0107688"
+
+[[task]]
+query = "the man from earth"
+answer = "tt0756683"
+
+[[task]]
+query = "amazing spiderman 2"
+answer = "tt1872181"
+
+[[task]]
+# Actually spelled "the revenant"
+query = "the revanant"
+answer = "tt1663202"
+
+[[task]]
+query = "imaginarium of dr"
+answer = "tt1054606"
+
+[[task]]
+# Actually spelled "the dark knight". This is hard because there are tons of
+# things (actually) called "the dark night", so the real result is hard to
+# find.
+query = "the dark night"
+answer = "tt0468569"
+
+[[task]]
+query = "the simpsons"
+answer = "tt0462538"

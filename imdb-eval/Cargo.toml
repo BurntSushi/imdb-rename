@@ -1,0 +1,27 @@
+[package]
+publish = false
+name = "imdb-eval"
+version = "0.0.1"
+authors = ["Andrew Gallant <jamslam@gmail.com>"]
+description = """
+A command line utility for evaluating the IMDb name index.
+"""
+documentation = "https://github.com/BurntSushi/imdb-rename"
+homepage = "https://github.com/BurntSushi/imdb-rename"
+repository = "https://github.com/BurntSushi/imdb-rename"
+readme = "README.md"
+keywords = ["imdb", "index", "search", "name", "evaluation"]
+license = "Unlicense/MIT"
+
+[dependencies]
+clap = "2"
+csv = "1.0.0-beta.5"
+failure = "0.1"
+imdb-index = { version = "0.0.1", path = "../imdb-index" }
+lazy_static = "1"
+log = { version = "0.4", features = ["std"] }
+regex = "0.2"
+serde = "1"
+serde_derive = "1"
+tempdir = "0.3"
+toml = "0.4"
