@@ -22,10 +22,14 @@ matrix:
     - os: linux
       rust: beta
       env: TARGET=x86_64-unknown-linux-gnu
+    # Stable channel.
+    - os: linux
+      rust: stable
+      env: TARGET=x86_64-unknown-linux-gnu
     # Minimum Rust supported channel. We enable these to make sure imdb-rename
     # continues to work on the advertised minimum Rust version.
     - os: linux
-      rust: 1.21.0
+      rust: 1.22.1
       env: TARGET=x86_64-unknown-linux-gnu
 install: ci/install.sh
 script: ci/script.sh
@@ -40,7 +44,7 @@ deploy:
     branch: master
     tags: true
   api_key:
-    secure: "IbSnsbGkxSydR/sozOf1/SRvHplzwRUHzcTjM7BKnr7GccL86gRPUrsrvD103KjQUGWIc1TnK1YTq5M0Onswg/ORDjqa1JEJPkPdPnVh9ipbF7M2De/7IlB4X4qXLKoApn8+bx2x/mfYXu4G+G1/2QdbaKK2yfXZKyjz0YFx+6CNrVCT2Nk8q7aHvOOzAL58vsG8iPDpupuhxlMDDn/UhyOWVInmPPQ0iJR1ZUJN8xJwXvKvBbfp3AhaBiAzkhXHNLgBR8QC5noWWMXnuVDMY3k4f3ic0V+p/qGUCN/nhptuceLxKFicMCYObSZeUzE5RAI0/OBW7l3z2iCoc+TbAnn+JrX/ObJCfzgAOXAU3tLaBFMiqQPGFKjKg1ltSYXomOFP/F7zALjpvFp4lYTBajRR+O3dqaxA9UQuRjw27vOeUpMcga4ZzL4VXFHzrxZKBHN//XIGjYAVhJ1NSSeGpeJV5/+jYzzWKfwSagRxQyVCzMooYFFXzn8Yxdm3PJlmp3GaAogNkdB9qKcrEvRINCelalzALPi0hD/HUDi8DD2PNTCLLMo6VSYtvc685Zbe+KgNzDV1YyTrRCUW6JotrS0r2ULLwnsh40hSB//nNv3XmwNmC/CmW5QAnIGj8cBMF4S2t6ohADIndojdAfNiptmaZOIT6owK7bWMgPMyopo="
+    - secure: WGgDfCcpwh39F2OjRl8TASuBSyfNsm4tnNjIO1mZXt6oB+cBMysFhgP9KpWHWmdeOD/iwjvLoPRz67QSWR14tP8roI13XH/R61wnHHSR6IiiHlpbrbZbyhz0UPXaDbK7NKAf8XKUuhsP2i0rgqbD6Zi/OAdV0msD9QJwcRq5mtm0FHMzOEfHKLNVXRoA//VTZN8XAA2JiyWTKGQnj4FG8kfbVmbgt6WYAdPTSKZsCLelaSEqu+jpTNAnDXc/Qz/phX8ejmxktIBB+N/PLBiZRRERUaR1rZsMVNKpQPx28P8OBT2C7csDeZDoSOaK1CTZuwhM7COC6Bd2NRKN869kRKcqGlYkjV7ZJ80x57q2dhGWSPCFEI3Ip+zq6m0vmqRG0KBisxknstDCFbsBjRzaI+3DKhAXqihi8+g3KvSWz/9Yxtn7+nNHchQYTC33MyjU5yigE3t+eRl23HqpTIIv3GwJ4JCyJIhrkEw9NRXBpD2upQ9rY9yXARu+JHypphqGjFe2FnVsYHagXh+KpsXUx/yUFh+yQWZKZLXOutyP/w+2kc/K1Ugzq5HFn8FYZxMsH1mR/OW1CMHK4m750LEDYMgBpGk+DuRkvwPGmNaV9pqH5RwD/vZtw79nKk1F0AoKii2FEijAtOAoVudavYqDNEPI7R76Rm7iwjgBzK/Tf98=
 branches:
   only:
     # Pushes and PR to the master branch
