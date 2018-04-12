@@ -3,12 +3,14 @@ env:
   global:
     - PROJECT_NAME: imdb-rename
     - RUST_BACKTRACE: full
+addons:
+  apt:
+    packages:
+      - musl-tools
 matrix:
   fast_finish: true
   include:
     # Nightly channel.
-    # All *nix releases are done on the nightly channel to take advantage
-    # of the regex library's multiple pattern SIMD search.
     - os: linux
       rust: nightly
       env: TARGET=x86_64-unknown-linux-musl
@@ -26,11 +28,11 @@ matrix:
     # Minimum Rust supported channel. We enable these to make sure imdb-rename
     # continues to work on the advertised minimum Rust version.
     - os: linux
-      rust: 1.20.0
-      env: TARGET=x86_64-unknown-linux-gnu
-    - os: linux
-      rust: 1.20.0
+      rust: 1.21.0
       env: TARGET=x86_64-unknown-linux-musl
+    - os: linux
+      rust: 1.21.0
+      env: TARGET=x86_64-unknown-linux-gnu
 install: ci/install.sh
 script: ci/script.sh
 before_deploy: ci/before_deploy.sh

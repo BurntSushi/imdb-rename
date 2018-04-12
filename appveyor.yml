@@ -29,6 +29,10 @@ matrix:
 # Install Rust and Cargo
 # (Based on from https://github.com/rust-lang/libc/blob/master/appveyor.yml)
 install:
+  - ps: >-
+        If ($Env:TARGET -eq 'x86_64-pc-windows-gnu') {
+          $Env:PATH += ';C:\msys64\mingw64\bin'
+        }
   - curl -sSf -o rustup-init.exe https://win.rustup.rs/
   - rustup-init.exe -y --default-host %TARGET% --no-modify-path
   - if defined MSYS2_BITS set PATH=%PATH%;C:\msys64\mingw%MSYS2_BITS%\bin
