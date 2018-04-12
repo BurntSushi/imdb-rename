@@ -9,7 +9,7 @@ set -ex
 
 # Generate artifacts for release
 mk_artifacts() {
-    cargo build --target "$TARGET" --release --features unstable
+    cargo build --target "$TARGET" --release
 }
 
 mk_tarball() {
