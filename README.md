@@ -34,7 +34,7 @@ then you can install imdb-rename directly from
 $ cargo install imdb-rename
 ```
 
-imdb-rename's minimum supported version for Rust is **1.22.1**.
+imdb-rename's minimum supported Rust version is **1.22.1**.
 
 
 ### Quick example
@@ -97,7 +97,7 @@ file name. For example, given this file:
 Thor.Ragnarok.2017.1080p.WEB-DL.DD5.1.H264-FGT.mkv
 ```
 
-We can "clean it up" and rename it a nice title like so:
+We can "clean it up" and rename it to a nice title like so:
 
 ```
 $ imdb-rename Thor.Ragnarok.2017.1080p.WEB-DL.DD5.1.H264-FGT.mkv
