@@ -1,7 +1,6 @@
 [package]
-publish = false
 name = "imdb-eval"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
 description = """
 A command line utility for evaluating the IMDb name index.
@@ -17,7 +16,7 @@ license = "Unlicense/MIT"
 clap = "2"
 csv = "1.0.0-beta.5"
 failure = "0.1"
-imdb-index = { version = "0.0.1", path = "../imdb-index" }
+imdb-index = { version = "0.1.0", path = "../imdb-index" }
 lazy_static = "1"
 log = { version = "0.4", features = ["std"] }
 regex = "0.2"

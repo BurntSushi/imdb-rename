@@ -1,7 +1,6 @@
 [package]
-publish = false
 name = "imdb-index"
-version = "0.0.1"  #:version
+version = "0.1.0"  #:version
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
 description = """
 A library for indexing and searching IMDb using information retrieval.

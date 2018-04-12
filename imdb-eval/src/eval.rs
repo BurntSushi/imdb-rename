@@ -485,10 +485,9 @@ mod tests {
             sim: Similarity::None,
             scorer: Some(NameScorer::OkapiBM25),
         };
-        assert_eq!(
-            spec.to_string(),
-            "size-30_ngram-3_ngram-type-window_sim-none_scorer-okapibm25",
-        );
+        let expected =
+            "size-30_ngram-3_ngram-type-window_sim-none_scorer-okapibm25";
+        assert_eq!(spec.to_string(), expected);
 
         let spec = Spec {
             result_size: 1,
@@ -497,9 +496,7 @@ mod tests {
             sim: Similarity::Jaro,
             scorer: None,
         };
-        assert_eq!(
-            spec.to_string(),
-            "size-1_ngram-2_ngram-type-edge_sim-jaro_scorer-none",
-        );
+        let expected = "size-1_ngram-2_ngram-type-edge_sim-jaro_scorer-none";
+        assert_eq!(spec.to_string(), expected);
     }
 }

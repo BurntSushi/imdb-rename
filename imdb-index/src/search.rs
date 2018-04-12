@@ -921,11 +921,9 @@ mod tests {
             .kind(TitleKind::TVSeries)
             .kind(TitleKind::Movie)
             .similarity(Similarity::Jaro);
-        assert_eq!(
-            q.to_string(),
-            "{scorer:okapibm25} {sim:jaro} {size:31} \
-             {movie} {tvSeries} {season:4-5} foo bar baz",
-        );
+        let expected =
+            "{scorer:okapibm25} {sim:jaro} {size:31} {movie} {tvSeries} {season:4-5} foo bar baz";
+        assert_eq!(q.to_string(), expected);
     }
 
     #[test]
