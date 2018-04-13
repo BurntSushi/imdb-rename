@@ -4,7 +4,7 @@ A command line tool to rename media files based on titles from IMDb.
 imdb-rename downloads the official IMDb data set and creates a local index to
 use for fast fuzzy searching.
 
-[![Linux build status](https://api.travis-ci.org/BurntSushi/imdb-rename.png)](https://travis-ci.org/BurntSushi/imdb-rename)
+[![Linux build status](https://api.travis-ci.org/BurntSushi/imdb-rename.svg)](https://travis-ci.org/BurntSushi/imdb-rename)
 [![Windows build status](https://ci.appveyor.com/api/projects/status/github/BurntSushi/imdb-rename?svg=true)](https://ci.appveyor.com/project/BurntSushi/imdb-rename)
 [![](http://meritbadge.herokuapp.com/imdb-rename)](https://crates.io/crates/imdb-rename)
 
