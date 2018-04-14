@@ -28,13 +28,9 @@ answer = "tt0199725"
 
 [[task]]
 query = "the last one"
-# This is a tricky one, since there are many many things named "The Last One,"
-# and the actual thing we're looking for is "The Last One: Part 2". (There is
-# also "The Last One: Part 1".)
 answer = "tt0583434"
 
 [[task]]
-# There is no hyphen in the name of this movie.
 query = "pre-destination"
 answer = "tt2397535"
 
@@ -83,7 +79,6 @@ query = "amazing spiderman 2"
 answer = "tt1872181"
 
 [[task]]
-# Actually spelled "the revenant"
 query = "the revanant"
 answer = "tt1663202"
 
@@ -92,12 +87,117 @@ query = "imaginarium of dr"
 answer = "tt1054606"
 
 [[task]]
-# Actually spelled "the dark knight". This is hard because there are tons of
-# things (actually) called "the dark night", so the real result is hard to
-# find.
 query = "the dark night"
 answer = "tt0468569"
 
 [[task]]
 query = "the simpsons"
 answer = "tt0462538"
+
+[[task]]
+query = "into the bad lands"
+answer = "tt3865236"
+
+[[task]]
+query = "south park bigger"
+answer = "tt0158983"
+
+[[task]]
+query = "game of shadows sherlock"
+answer = "tt1515091"
+
+[[task]]
+query = "ragnarok"
+answer = "tt3501632"
+
+[[task]]
+query = "riddick"
+answer = "tt0296572"
+
+[[task]]
+query = "voyage dawn treader"
+answer = "tt0980970"
+
+[[task]]
+query = "phenomonon"
+answer = "tt0117333"
+
+[[task]]
+query = "ratchet and clank"
+answer = "tt2865120"
+
+[[task]]
+query = "spiderman homecoming"
+answer = "tt2250912"
+
+[[task]]
+query = "sixth sense"
+answer = "tt0167404"
+
+[[task]]
+query = "there will be blood"
+answer = "tt0469494"
+
+[[task]]
+query = "gangs new york"
+answer = "tt0217505"
+
+[[task]]
+query = "first avenger"
+answer = "tt0458339"
+
+[[task]]
+query = "good shepherd"
+answer = "tt0343737"
+
+[[task]]
+query = "gone with the wind"
+answer = "tt0031381"
+
+[[task]]
+query = "bourne identity"
+answer = "tt0258463"
+
+[[task]]
+query = "seinfeld"
+answer = "tt0098904"
+
+[[task]]
+query = "lincoln"
+answer = "tt0443272"
+
+[[task]]
+query = "sherlock"
+answer = "tt1475582"
+
+[[task]]
+query = "skinner's badass song"
+answer = "tt0777150"
+
+[[task]]
+query = "flying hellish"
+answer = "tt0778451"
+
+[[task]]
+query = "springfield files"
+answer = "tt0701263"
+
+[[task]]
+query = "shot mr burns"
+answer = "tt0701295"
+
+[[task]]
+query = "camp krusty"
+answer = "tt0701142"
+
+[[task]]
+query = "the monorail"
+answer = "tt0701173"
+
+[[task]]
+query = "king homer"
+answer = "tt0701144"
+
+[[task]]
+query = "mr. plow"
+answer = "tt0701184"
