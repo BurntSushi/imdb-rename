@@ -533,6 +533,11 @@ fn create_name_index(
         let id = &record[0];
         let title = &record[2];
         let original_title = &record[3];
+        let is_adult = &record[4] == "1";
+        if is_adult {
+            // TODO: Expose an option to permit this.
+            continue;
+        }
         count += 1;
         title_count += 1;
 
