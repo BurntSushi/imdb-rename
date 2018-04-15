@@ -12,15 +12,50 @@ use Result;
 /// A proposal to rename a `src` file path to a `dst` file path.
 #[derive(Clone, Debug)]
 pub struct RenameProposal {
-    pub src: PathBuf,
-    pub dst: PathBuf,
+    src: PathBuf,
+    dst: PathBuf,
 }
 
 impl RenameProposal {
+    /// Create a new proposal with the given source and destination. The
+    /// destination is constructed by joining `dst_parent` with `dst_name`.
+    /// `dst_name` is sanitized to be safe as a file name.
+    fn new(src: &Path, dst_parent: &Path, dst_name: &str) -> RenameProposal {
+        lazy_static! {
+            static ref RE_BAD_PATH_CHARS: Regex = Regex::new(
+                r"[\x00/]",
+            ).unwrap();
+        }
+        let name = RE_BAD_PATH_CHARS.replace_all(dst_name, "_");
+        RenameProposal {
+            src: src.to_path_buf(),
+            dst: dst_parent.join(&*name),
+        }
+    }
+
     /// Execute this proposal and rename the `src` to the `dst`.
     pub fn rename(&self) -> Result<()> {
-        fs::rename(&self.src, &self.dst)?;
+        fs::rename(&self.src, &self.dst).map_err(|e| {
+            format_err!(
+                "error renaming '{}' to '{}': {}",
+                self.src.display(), self.dst.display(), e,
+            )
+        })?;
         Ok(())
+    }
+
+    /// The `src` of this proposal.
+    pub fn src(&self) -> &Path {
+        &self.src
+    }
+
+    /// The `dst` of this proposal.
+    ///
+    /// Note that the destination is cleansed such that it is safe for
+    /// renaming. e.g., If a `/` occurs in an IMDb title, then it is replaced
+    /// with `_`.
+    pub fn dst(&self) -> &Path {
+        &self.dst
     }
 }
 
@@ -141,10 +176,11 @@ impl Renamer {
                 return None;
             }
         };
-        Some(RenameProposal {
-            src: path.to_path_buf(),
-            dst: candidate.path.to_path(&ent),
-        })
+        Some(RenameProposal::new(
+            path,
+            &candidate.path.parent,
+            &candidate.path.imdb_name(&ent),
+        ))
     }
 
     /// Search for any entity via its name and a year. In general, this is
@@ -503,7 +539,7 @@ impl CandidatePath {
     /// Convert this candidate path to the desired name based on an IMDb
     /// entity. In general, this replaces the `base_name` of this candidate
     /// with the title found in the given entity.
-    fn to_path(&self, ent: &MediaEntity) -> PathBuf {
+    fn imdb_name(&self, ent: &MediaEntity) -> String {
         let name = match ent.episode() {
             Some(ep) => {
                 format!(
@@ -520,11 +556,10 @@ impl CandidatePath {
                 }
             }
         };
-        let name = match self.ext {
+        match self.ext {
             None => name,
             Some(ref ext) => format!("{}.{}", name, ext),
-        };
-        self.parent.join(&name)
+        }
     }
 }
 

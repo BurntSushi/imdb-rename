@@ -114,15 +114,14 @@ fn try_main() -> Result<()> {
 
     let mut stdout = TabWriter::new(io::stdout());
     for p in &proposals {
-        writeln!(stdout, "{}\t->\t{}", p.src.display(), p.dst.display())?;
+        writeln!(stdout, "{}\t->\t{}", p.src().display(), p.dst().display())?;
     }
     stdout.flush()?;
 
     if read_yesno("Are you sure you want to rename the above files? (y/n) ")? {
         for p in &proposals {
             if let Err(err) = p.rename() {
-                eprintln!("error renaming '{}' to '{}': {}",
-                          p.src.display(), p.dst.display(), err);
+                eprintln!("{}", err);
             }
         }
     }
