@@ -366,8 +366,10 @@ impl Renamer {
             None => bail!("missing 'episode' group in: {}", self.episode),
             Some(mat) => mat,
         };
+
+        let title_end = caps_season.get(0).unwrap().start();
         Ok(Some(CandidateEpisode {
-            tvshow_title: name[..mat_season.start()].to_string(),
+            tvshow_title: name[..title_end].to_string(),
             season: mat_season.as_str().parse()?,
             episode: mat_episode.as_str().parse()?,
         }))
