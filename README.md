@@ -36,6 +36,9 @@ $ cargo install imdb-rename
 
 imdb-rename's minimum supported Rust version is **1.22.1**.
 
+#### Archlinux
+
+An aur package is available: [imdb-rename](https://aur.archlinux.org/packages/imdb-rename/).
 
 ### Quick example
 
