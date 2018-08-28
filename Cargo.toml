@@ -16,16 +16,16 @@ license = "Unlicense/MIT"
 members = ["imdb-eval", "imdb-index"]
 
 [dependencies]
-clap = "2"
+clap = "2.32.0"
 failure = "0.1"
 flate2 = "1"
 imdb-index = { version = "0.1.0", path = "imdb-index" }
-lazy_static = "1"
+lazy_static = "1.1"
 log = { version = "0.4", features = ["std"] }
-regex = "0.2"
+regex = "1"
 reqwest = "0.8"
 tabwriter = "1"
-walkdir = "2"
+walkdir = "2.2.5"
 
 [profile.release]
 debug = true

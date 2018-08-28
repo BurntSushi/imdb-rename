@@ -13,13 +13,13 @@ keywords = ["imdb", "index", "search", "name", "evaluation"]
 license = "Unlicense/MIT"
 
 [dependencies]
-clap = "2"
-csv = "1.0.0-beta.5"
+clap = "2.32.0"
+csv = "1.0.1"
 failure = "0.1"
 imdb-index = { version = "0.1.0", path = "../imdb-index" }
-lazy_static = "1"
+lazy_static = "1.1"
 log = { version = "0.4", features = ["std"] }
-regex = "0.2"
+regex = "1"
 serde = "1"
 serde_derive = "1"
 tempdir = "0.3"

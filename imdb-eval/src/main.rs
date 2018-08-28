@@ -375,7 +375,7 @@ fn parse_many_lossy<E: failure::Fail, T: FromStr<Err=E>>(
 /// Return a prettily formatted error, including its entire causal chain.
 fn pretty_error(err: &failure::Error) -> String {
     let mut pretty = err.to_string();
-    let mut prev = err.cause();
+    let mut prev = err.as_fail();
     while let Some(next) = prev.cause() {
         pretty.push_str(": ");
         pretty.push_str(&next.to_string());
@@ -387,7 +387,7 @@ fn pretty_error(err: &failure::Error) -> String {
 /// Return true if and only if an I/O broken pipe error exists in the causal
 /// chain of the given error.
 fn is_pipe_error(err: &failure::Error) -> bool {
-    for cause in err.causes() {
+    for cause in err.iter_chain() {
         if let Some(ioerr) = cause.downcast_ref::<io::Error>() {
             if ioerr.kind() == io::ErrorKind::BrokenPipe {
                 return true;
