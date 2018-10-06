@@ -280,7 +280,12 @@ fn app() -> clap::App<'static, 'static> {
         .arg(Arg::with_name("query")
              .long("query")
              .short("q")
-             .takes_value(true))
+             .takes_value(true)
+             .help("Setting an override query is necessary if the file \
+                    path lacks sufficient information to find a matching \
+                    title. For example, if a year could not be found. It \
+                    is also useful for specifying a TV show when renaming \
+                    multiple episodes at once."))
         .arg(Arg::with_name("re-episode")
              .long("re-episode")
              .takes_value(true)
