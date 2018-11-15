@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::os::unix;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -38,6 +39,17 @@ impl RenameProposal {
         fs::rename(&self.src, &self.dst).map_err(|e| {
             format_err!(
                 "error renaming '{}' to '{}': {}",
+                self.src.display(), self.dst.display(), e,
+            )
+        })?;
+        Ok(())
+    }
+
+    /// Execute this proposal and symlink the `src` to the `dst`.
+    pub fn symlink(&self) -> Result<()> {
+        unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
+            format_err!(
+                "error symlinking '{}' to '{}': {}",
                 self.src.display(), self.dst.display(), e,
             )
         })?;

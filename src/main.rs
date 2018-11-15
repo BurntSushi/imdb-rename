@@ -118,9 +118,18 @@ fn try_main() -> Result<()> {
     }
     stdout.flush()?;
 
-    if read_yesno("Are you sure you want to rename the above files? (y/n) ")? {
+    let action_str = match args.symlink {
+        true => "symlink",
+        false => "rename",
+    };
+
+    if read_yesno(&format!("Are you sure you want to {} the above files? (y/n) ", action_str))? {
         for p in &proposals {
-            if let Err(err) = p.rename() {
+            if let Err(err) = match args.symlink {
+                true => p.symlink(),
+                false => p.rename(),
+            }
+            {
                 eprintln!("{}", err);
             }
         }
@@ -143,6 +152,7 @@ struct Args {
     update_data: bool,
     update_index: bool,
     min_votes: u32,
+    symlink: bool,
 }
 
 impl Args {
@@ -195,6 +205,7 @@ impl Args {
             update_data: matches.is_present("update-data"),
             update_index: matches.is_present("update-index"),
             min_votes: min_votes,
+            symlink: matches.is_present("symlink"),
         })
     }
 
@@ -316,6 +327,10 @@ fn app() -> clap::App<'static, 'static> {
         .arg(Arg::with_name("update-index")
              .long("update-index")
              .help("Forcefully re-indexes the IMDb data and then exits."))
+        .arg(Arg::with_name("symlink")
+             .long("symlink")
+             .short("s")
+             .help("Symlink instead of move when renaming. (Unix only)"))
 }
 
 /// Collect all file paths from a sequence of OsStrings from the command line.
