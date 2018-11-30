@@ -206,6 +206,9 @@ impl Args {
             .parse()?;
         let rename_action =
             if matches.is_present("symlink") {
+                if cfg!(windows) {
+                    bail!("symlink not supported on Windows, try hardlink");
+                }
                 RenameAction::Symlink
             } else if matches.is_present("hardlink") {
                 RenameAction::Hardlink
