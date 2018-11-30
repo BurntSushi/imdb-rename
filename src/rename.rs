@@ -123,7 +123,7 @@ impl Renamer {
     ) -> Result<Vec<RenameProposal>> {
         let mut proposals = vec![];
         for path in paths {
-            let proposal = match self.propose_one(searcher, path) {
+            let proposal = match self.propose_one(searcher, path, &dest) {
                 None => continue,
                 Some(proposal) => proposal,
             };
@@ -172,6 +172,7 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         path: &Path,
+        dest: &Option<PathBuf>,
     ) -> Option<RenameProposal> {
         let candidate = match self.candidate(path) {
             Ok(candidate) => candidate,
@@ -198,7 +199,10 @@ impl Renamer {
         };
         Some(RenameProposal::new(
             path,
-            &candidate.path.parent,
+            match dest {
+                Some(d) => d,
+                None => &candidate.path.parent,
+            },
             &candidate.path.imdb_name(&ent),
         ))
     }
