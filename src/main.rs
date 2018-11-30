@@ -367,7 +367,10 @@ fn app() -> clap::App<'static, 'static> {
              .long("symlink")
              .short("s")
              .value_name("folder")
-             .help("Place symlink in <folder> instead of moving. (Unix only)"))
+             .conflicts_with("hardlink")
+             .help("Place symlink in <folder> instead of moving. Be careful of \
+                   absolute vs. relative links: the target of the symlink will \
+                   match the given input. (Unix only feature)"))
         .arg(Arg::with_name("hardlink")
              .long("hardlink")
              .short("H")
