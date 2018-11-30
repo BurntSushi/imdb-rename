@@ -204,16 +204,13 @@ impl Args {
             .value_of_lossy("votes")
             .unwrap()
             .parse()?;
-        let rename_action =
-            if matches.is_present("symlink") {
-                if cfg!(windows) {
-                    bail!("symlink not supported on Windows, try hardlink");
-                }
-                RenameAction::Symlink
-            } else if matches.is_present("hardlink") {
-                RenameAction::Hardlink
-            } else {
-                RenameAction::Rename
+        let rename_action = match () {
+            _ if matches.is_present("symlink") && cfg!(windows) => {
+                bail!("symlink not supported on Windows, try hardlink");
+                },
+            _ if matches.is_present("symlink") => RenameAction::Symlink,
+            _ if matches.is_present("hardlink") => RenameAction::Hardlink,
+            _ => RenameAction::Rename,
             };
         let dest_dir = match rename_action {
             RenameAction::Symlink => match matches.value_of_os("symlink").map(PathBuf::from) {
