@@ -15,6 +15,7 @@ extern crate walkdir;
 
 use std::env;
 use std::ffi::OsStr;
+use std::fmt;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process;
@@ -107,7 +108,7 @@ fn try_main() -> Result<()> {
         builder.force(choose(&mut searcher, results.as_slice(), 0.25)?);
     }
     let renamer = builder.build()?;
-    let proposals = renamer.propose(&mut searcher, &args.files)?;
+    let proposals = renamer.propose(&mut searcher, &args.files, args.dest_dir)?;
     if proposals.is_empty() {
         bail!("no files to rename");
     }
@@ -118,13 +119,10 @@ fn try_main() -> Result<()> {
     }
     stdout.flush()?;
 
-    let action_str = match args.rename_action {
-        RenameAction::Rename => "rename",
-        RenameAction::Symlink => "symlink",
-        RenameAction::Hardlink => "hardlink",
-    };
-
-    if read_yesno(&format!("Are you sure you want to {} the above files? (y/n) ", action_str))? {
+    if read_yesno(&format!(
+        "Are you sure you want to {} the above files? (y/n) ",
+        &args.rename_action
+    ))? {
         for p in &proposals {
             if let Err(err) = p.rename(&args.rename_action) {
                 eprintln!("{}", err);
@@ -158,6 +156,16 @@ pub enum RenameAction {
     Rename,
     Symlink,
     Hardlink,
+}
+
+impl fmt::Display for RenameAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            RenameAction::Rename => "rename",
+            RenameAction::Symlink => "symlink",
+            RenameAction::Hardlink => "hardlink",
+        })
+    }
 }
 
 impl Args {

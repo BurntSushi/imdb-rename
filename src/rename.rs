@@ -119,6 +119,7 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         paths: &[PathBuf],
+        dest: Option<PathBuf>,
     ) -> Result<Vec<RenameProposal>> {
         let mut proposals = vec![];
         for path in paths {
