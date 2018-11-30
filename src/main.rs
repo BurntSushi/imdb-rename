@@ -118,18 +118,15 @@ fn try_main() -> Result<()> {
     }
     stdout.flush()?;
 
-    let action_str = match args.symlink {
-        true => "symlink",
-        false => "rename",
+    let action_str = match args.rename_action {
+        RenameAction::Rename => "rename",
+        RenameAction::Symlink => "symlink",
+        RenameAction::Hardlink => "hardlink",
     };
 
     if read_yesno(&format!("Are you sure you want to {} the above files? (y/n) ", action_str))? {
         for p in &proposals {
-            if let Err(err) = match args.symlink {
-                true => p.symlink(),
-                false => p.rename(),
-            }
-            {
+            if let Err(err) = p.rename(&args.rename_action) {
                 eprintln!("{}", err);
             }
         }
@@ -140,6 +137,7 @@ fn try_main() -> Result<()> {
 #[derive(Debug)]
 struct Args {
     data_dir: PathBuf,
+    dest_dir: Option<PathBuf>,
     debug: bool,
     files: Vec<PathBuf>,
     index_dir: PathBuf,
@@ -152,7 +150,14 @@ struct Args {
     update_data: bool,
     update_index: bool,
     min_votes: u32,
-    symlink: bool,
+    rename_action: RenameAction,
+}
+
+#[derive(Debug)]
+pub enum RenameAction {
+    Rename,
+    Symlink,
+    Hardlink,
 }
 
 impl Args {
@@ -191,8 +196,28 @@ impl Args {
             .value_of_lossy("votes")
             .unwrap()
             .parse()?;
+        let rename_action =
+            if matches.is_present("symlink") {
+                RenameAction::Symlink
+            } else if matches.is_present("hardlink") {
+                RenameAction::Hardlink
+            } else {
+                RenameAction::Rename
+            };
+        let dest_dir = match rename_action {
+            RenameAction::Symlink => match matches.value_of_os("symlink").map(PathBuf::from) {
+                Some(path) => Some(path),
+                None => bail!("Invalid destination folder"),
+            }
+            RenameAction::Hardlink => match matches.value_of_os("hardlink").map(PathBuf::from) {
+                Some(path) => Some(path),
+                None => bail!("Invalid destination folder"),
+            }
+            RenameAction::Rename => None,
+        };
         Ok(Args {
             data_dir: data_dir,
+            dest_dir: dest_dir,
             debug: matches.is_present("debug"),
             files: files,
             index_dir: index_dir,
@@ -205,7 +230,7 @@ impl Args {
             update_data: matches.is_present("update-data"),
             update_index: matches.is_present("update-index"),
             min_votes: min_votes,
-            symlink: matches.is_present("symlink"),
+            rename_action: rename_action,
         })
     }
 
@@ -330,7 +355,14 @@ fn app() -> clap::App<'static, 'static> {
         .arg(Arg::with_name("symlink")
              .long("symlink")
              .short("s")
-             .help("Symlink instead of move when renaming. (Unix only)"))
+             .value_name("folder")
+             .help("Place symlink in <folder> instead of moving. (Unix only)"))
+        .arg(Arg::with_name("hardlink")
+             .long("hardlink")
+             .short("H")
+             .value_name("folder")
+             .conflicts_with("symlink")
+             .help("Place hardlink in <folder> instead of moving."))
 }
 
 /// Collect all file paths from a sequence of OsStrings from the command line.

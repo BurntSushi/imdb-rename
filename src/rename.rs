@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use imdb_index::{MediaEntity, Query, SearchResults, Searcher, TitleKind};
+use RenameAction;
 use regex::Regex;
 
 use util::choose;
@@ -34,25 +35,31 @@ impl RenameProposal {
         }
     }
 
-    /// Execute this proposal and rename the `src` to the `dst`.
-    pub fn rename(&self) -> Result<()> {
-        fs::rename(&self.src, &self.dst).map_err(|e| {
-            format_err!(
-                "error renaming '{}' to '{}': {}",
-                self.src.display(), self.dst.display(), e,
-            )
-        })?;
-        Ok(())
-    }
-
-    /// Execute this proposal and symlink the `src` to the `dst`.
-    pub fn symlink(&self) -> Result<()> {
-        unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
-            format_err!(
-                "error symlinking '{}' to '{}': {}",
-                self.src.display(), self.dst.display(), e,
-            )
-        })?;
+    /// Execute this proposal according to `RenameAction`.
+    pub fn rename(&self, action: &RenameAction) -> Result<()> {
+        match action {
+            RenameAction::Rename => {
+                fs::rename(&self.src, &self.dst).map_err(|e| {
+                format_err!(
+                    "error renaming '{}' to '{}': {}",
+                    self.src.display(), self.dst.display(), e,
+                )})?;
+            }
+            RenameAction::Symlink => {
+                unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
+                    format_err!(
+                        "error symlinking '{}' to '{}': {}",
+                        self.src.display(), self.dst.display(), e,
+                    )})?;
+            }
+            RenameAction::Hardlink => {
+                fs::hard_link(&self.src, &self.dst).map_err(|e| {
+                    format_err!(
+                        "error hardlinking '{}' to '{}': {}",
+                        self.src.display(), self.dst.display(), e,
+                    )})?;
+            }
+        }
         Ok(())
     }
 
