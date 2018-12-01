@@ -46,7 +46,8 @@ impl RenameProposal {
             }
             RenameAction::Symlink => {
                 #[cfg(unix)] {
-                    std::os::unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
+                    use std::os::unix;
+                    unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
                         format_err!(
                             "error symlinking '{}' to '{}': {}",
                             self.src.display(),
