@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::os::unix;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -46,11 +45,14 @@ impl RenameProposal {
                 )})?;
             }
             RenameAction::Symlink => {
-                unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
-                    format_err!(
-                        "error symlinking '{}' to '{}': {}",
-                        self.src.display(), self.dst.display(), e,
-                    )})?;
+                if cfg![unix] {
+                    use std::os::unix;
+                    unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
+                        format_err!(
+                            "error symlinking '{}' to '{}': {}",
+                            self.src.display(), self.dst.display(), e,
+                        )})?;
+                }
             }
             RenameAction::Hardlink => {
                 fs::hard_link(&self.src, &self.dst).map_err(|e| {
