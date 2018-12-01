@@ -45,12 +45,15 @@ impl RenameProposal {
                 )})?;
             }
             RenameAction::Symlink => {
-                if cfg!(unix) {
+                #[cfg(unix)] {
                     std::os::unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
                         format_err!(
                             "error symlinking '{}' to '{}': {}",
-                            self.src.display(), self.dst.display(), e,
-                        )})?;
+                            self.src.display(),
+                            self.dst.display(),
+                            e,
+                        )
+                    })?;
                 }
             }
             RenameAction::Hardlink => {
