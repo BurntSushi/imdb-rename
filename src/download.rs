@@ -2,6 +2,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 
+use csv;
 use flate2::read::GzDecoder;
 use reqwest;
 
@@ -60,7 +61,7 @@ fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
     let url = format!("{}/{}", IMDB_BASE_URL, dataset);
     info!("downloading {} to {}", url, outpath.display());
     let mut resp = GzDecoder::new(reqwest::get(&url)?.error_for_status()?);
-    io::copy(&mut resp, &mut outfile)?;
+    write_sorted_csv_records(&mut resp, &mut outfile)?;
     Ok(())
 }
 
@@ -84,4 +85,42 @@ fn dataset_path(dir: &Path, name: &'static str) -> PathBuf {
     // We drop the gz extension since we decompress before writing to disk.
     path.set_extension("");
     path
+}
+
+/// Read all CSV data into memory and sort the records in lexicographic order.
+///
+/// This is unfortunately necessary because the IMDb data is no longer sorted
+/// in lexicographic order with respect to the `tt` identifiers. This appears
+/// to be fallout as a result of adding 10 character identifiers (previously,
+/// only 9 character identifiers were used).
+fn write_sorted_csv_records<R: io::Read, W: io::Write>(
+    rdr: R,
+    wtr: W,
+) -> Result<()> {
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .delimiter(b'\t')
+        .quoting(false)
+        .from_reader(rdr);
+    let mut wtr = csv::WriterBuilder::new()
+        .delimiter(b'\t')
+        .quote_style(csv::QuoteStyle::Never)
+        .from_writer(wtr);
+    wtr.write_byte_record(rdr.byte_headers()?)?;
+
+    let mut records = rdr
+        .byte_records()
+        .map(|r| r.map_err(From::from))
+        .collect::<Result<Vec<csv::ByteRecord>>>()?;
+    // This is a complete hack. Most IMDb data files put the identifier in the
+    // first column. Some data files, however, have identifiers in multiple
+    // columns (e.g., title.episode.tsv), but in those cases, they are always
+    // the first two columns. So we sort by both columns, which is harmless
+    // when the second column is not an identifier.
+    records.sort_by(|r1, r2| (&r1[0], &r1[1]).cmp(&(&r2[0], &r2[1])));
+    for record in records {
+        wtr.write_byte_record(&record)?;
+    }
+    wtr.flush()?;
+    Ok(())
 }

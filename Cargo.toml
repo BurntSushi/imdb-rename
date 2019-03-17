@@ -17,6 +17,7 @@ members = ["imdb-eval", "imdb-index"]
 
 [dependencies]
 clap = "2.32.0"
+csv = "1"
 failure = "0.1"
 flate2 = "1"
 imdb-index = { version = "0.1.1", path = "imdb-index" }
