@@ -1,3 +1,4 @@
+extern crate bstr;
 #[macro_use]
 extern crate clap;
 #[macro_use]

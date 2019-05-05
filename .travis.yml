@@ -29,7 +29,7 @@ matrix:
     # Minimum Rust supported channel. We enable these to make sure imdb-rename
     # continues to work on the advertised minimum Rust version.
     - os: linux
-      rust: 1.28.0
+      rust: 1.33.0
       env: TARGET=x86_64-unknown-linux-gnu
 install: ci/install.sh
 script: ci/script.sh

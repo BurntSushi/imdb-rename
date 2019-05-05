@@ -60,7 +60,8 @@ fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
     let url = format!("{}/{}", IMDB_BASE_URL, dataset);
     info!("downloading {} to {}", url, outpath.display());
     let mut resp = GzDecoder::new(reqwest::get(&url)?.error_for_status()?);
-    io::copy(&mut resp, &mut outfile)?;
+    info!("sorting CSV records");
+    write_sorted_csv_records(&mut resp, &mut outfile)?;
     Ok(())
 }
 
@@ -84,4 +85,38 @@ fn dataset_path(dir: &Path, name: &'static str) -> PathBuf {
     // We drop the gz extension since we decompress before writing to disk.
     path.set_extension("");
     path
+}
+
+/// Read all CSV data into memory and sort the records in lexicographic order.
+///
+/// This is unfortunately necessary because the IMDb data is no longer sorted
+/// in lexicographic order with respect to the `tt` identifiers. This appears
+/// to be fallout as a result of adding 10 character identifiers (previously,
+/// only 9 character identifiers were used).
+fn write_sorted_csv_records<R: io::Read, W: io::Write>(
+    rdr: R,
+    wtr: W,
+) -> Result<()> {
+    use std::io::Write;
+    use bstr::io::BufReadExt;
+
+    // We actually only sort the raw lines here instead of parsing CSV records,
+    // since parsing into CSV records has fairly substantial memory overhead.
+    // Since IMDb CSV data never contains a record that spans multiple lines,
+    // this transformation is okay.
+    let rdr = io::BufReader::new(rdr);
+    let mut lines = rdr.byte_lines().collect::<io::Result<Vec<_>>>()?;
+    if lines.is_empty() {
+        bail!("got empty CSV input");
+    }
+    // Keep the header record first.
+    lines[1..].sort_unstable();
+
+    let mut wtr = io::BufWriter::new(wtr);
+    for line in lines {
+        wtr.write_all(line.as_bytes())?;
+        wtr.write_all(b"\n")?;
+    }
+    wtr.flush()?;
+    Ok(())
 }
