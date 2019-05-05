@@ -16,8 +16,8 @@ license = "Unlicense/MIT"
 members = ["imdb-eval", "imdb-index"]
 
 [dependencies]
+bstr = { version = "0.1.2", default-features = false, features = ["std"] }
 clap = "2.32.0"
-csv = "1"
 failure = "0.1"
 flate2 = "1"
 imdb-index = { version = "0.1.1", path = "imdb-index" }

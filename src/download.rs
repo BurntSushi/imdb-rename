@@ -2,7 +2,6 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use csv;
 use flate2::read::GzDecoder;
 use reqwest;
 
@@ -61,6 +60,7 @@ fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
     let url = format!("{}/{}", IMDB_BASE_URL, dataset);
     info!("downloading {} to {}", url, outpath.display());
     let mut resp = GzDecoder::new(reqwest::get(&url)?.error_for_status()?);
+    info!("sorting CSV records");
     write_sorted_csv_records(&mut resp, &mut outfile)?;
     Ok(())
 }
@@ -97,29 +97,25 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
     rdr: R,
     wtr: W,
 ) -> Result<()> {
-    let mut rdr = csv::ReaderBuilder::new()
-        .has_headers(true)
-        .delimiter(b'\t')
-        .quoting(false)
-        .from_reader(rdr);
-    let mut wtr = csv::WriterBuilder::new()
-        .delimiter(b'\t')
-        .quote_style(csv::QuoteStyle::Never)
-        .from_writer(wtr);
-    wtr.write_byte_record(rdr.byte_headers()?)?;
+    use std::io::Write;
+    use bstr::io::BufReadExt;
 
-    let mut records = rdr
-        .byte_records()
-        .map(|r| r.map_err(From::from))
-        .collect::<Result<Vec<csv::ByteRecord>>>()?;
-    // This is a complete hack. Most IMDb data files put the identifier in the
-    // first column. Some data files, however, have identifiers in multiple
-    // columns (e.g., title.episode.tsv), but in those cases, they are always
-    // the first two columns. So we sort by both columns, which is harmless
-    // when the second column is not an identifier.
-    records.sort_by(|r1, r2| (&r1[0], &r1[1]).cmp(&(&r2[0], &r2[1])));
-    for record in records {
-        wtr.write_byte_record(&record)?;
+    // We actually only sort the raw lines here instead of parsing CSV records,
+    // since parsing into CSV records has fairly substantial memory overhead.
+    // Since IMDb CSV data never contains a record that spans multiple lines,
+    // this transformation is okay.
+    let rdr = io::BufReader::new(rdr);
+    let mut lines = rdr.byte_lines().collect::<io::Result<Vec<_>>>()?;
+    if lines.is_empty() {
+        bail!("got empty CSV input");
+    }
+    // Keep the header record first.
+    lines[1..].sort_unstable();
+
+    let mut wtr = io::BufWriter::new(wtr);
+    for line in lines {
+        wtr.write_all(line.as_bytes())?;
+        wtr.write_all(b"\n")?;
     }
     wtr.flush()?;
     Ok(())
