@@ -5,7 +5,7 @@ use fst::{self, IntoStreamer, Streamer};
 
 use error::{Error, Result};
 use record::Rating;
-use util::{IMDB_RATINGS, csv_file, fst_set_builder_file, fst_set_file};
+use util::{csv_file, fst_set_builder_file, fst_set_file, IMDB_RATINGS};
 
 /// The name of the ratings index file.
 ///
@@ -36,10 +36,7 @@ impl Index {
     /// Create a rating index from the given IMDb data directory, and write it
     /// to the given index directory. If a rating index already exists, then it
     /// is overwritten.
-    pub fn create<P1: AsRef<Path>, P2: AsRef<Path>>(
-        data_dir: P1,
-        index_dir: P2,
-    ) -> Result<Index> {
+    pub fn create<P1: AsRef<Path>, P2: AsRef<Path>>(data_dir: P1, index_dir: P2) -> Result<Index> {
         let data_dir = data_dir.as_ref();
         let index_dir = index_dir.as_ref();
 
@@ -70,7 +67,7 @@ impl Index {
         upper.push(0xFF);
 
         let mut stream = self.idx.range().ge(id).le(upper).into_stream();
-        while let Some(rating_bytes) = stream.next() {
+        if let Some(rating_bytes) = stream.next() {
             return Ok(Some(read_rating(rating_bytes)?));
         }
         Ok(None)
@@ -91,7 +88,7 @@ fn read_rating(bytes: &[u8]) -> Result<Rating> {
     Ok(Rating {
         id: id,
         rating: BE::read_f32(&bytes[i..]),
-        votes: BE::read_u32(&bytes[i+4..]),
+        votes: BE::read_u32(&bytes[i + 4..]),
     })
 }
 
@@ -121,8 +118,8 @@ fn f32_to_bytes(n: f32) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use index::tests::TestContext;
     use super::Index;
+    use index::tests::TestContext;
 
     #[test]
     fn basics() {

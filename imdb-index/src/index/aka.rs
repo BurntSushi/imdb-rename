@@ -179,10 +179,8 @@ impl<R: io::Read> Iterator for AKAIndexRecords<R> {
         }
         // Only initialize the record if this is our first go at it.
         // Otherwise, previous call leaves next record in `AKAIndexRecord`.
-        if self.record.is_empty() {
-            if !itry!(self.rdr.read_byte_record(&mut self.record)) {
+        if self.record.is_empty() && !itry!(self.rdr.read_byte_record(&mut self.record)) {
                 return None;
-            }
         }
         let mut irecord = AKAIndexRecord {
             id: self.record[0].to_vec(),

@@ -160,11 +160,15 @@ pub enum RenameAction {
 
 impl fmt::Display for RenameAction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", match self {
-            RenameAction::Rename => "rename",
-            RenameAction::Symlink => "symlink",
-            RenameAction::Hardlink => "hardlink",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                RenameAction::Rename => "rename",
+                RenameAction::Symlink => "symlink",
+                RenameAction::Hardlink => "hardlink",
+            }
+        )
     }
 }
 
@@ -174,53 +178,36 @@ impl Args {
             matches
                 .values_of_os("file")
                 .map(|it| it.collect())
-                .unwrap_or(vec![]),
+                .unwrap_or_else(|| vec![]),
             matches.is_present("follow"),
         );
-        let query = matches
-            .value_of_lossy("query")
-            .map(|q| q.into_owned());
-        let data_dir = matches
-            .value_of_os("data-dir")
-            .map(PathBuf::from)
-            .unwrap();
+        let query = matches.value_of_lossy("query").map(|q| q.into_owned());
+        let data_dir = matches.value_of_os("data-dir").map(PathBuf::from).unwrap();
         let index_dir = matches
             .value_of_os("index-dir")
             .map(PathBuf::from)
-            .unwrap_or(data_dir.join("index"));
-        let regex_episode = matches
-            .value_of_lossy("re-episode")
-            .unwrap()
-            .into_owned();
-        let regex_season = matches
-            .value_of_lossy("re-season")
-            .unwrap()
-            .into_owned();
-        let regex_year = matches
-            .value_of_lossy("re-year")
-            .unwrap()
-            .into_owned();
-        let min_votes = matches
-            .value_of_lossy("votes")
-            .unwrap()
-            .parse()?;
+            .unwrap_or_else(|| data_dir.join("index"));
+        let regex_episode = matches.value_of_lossy("re-episode").unwrap().into_owned();
+        let regex_season = matches.value_of_lossy("re-season").unwrap().into_owned();
+        let regex_year = matches.value_of_lossy("re-year").unwrap().into_owned();
+        let min_votes = matches.value_of_lossy("votes").unwrap().parse()?;
         let rename_action = match () {
             _ if matches.is_present("symlink") && cfg!(windows) => {
                 bail!("symlink not supported on Windows, try hardlink");
-                },
+            }
             _ if matches.is_present("symlink") => RenameAction::Symlink,
             _ if matches.is_present("hardlink") => RenameAction::Hardlink,
             _ => RenameAction::Rename,
-            };
+        };
         let dest_dir = match rename_action {
             RenameAction::Symlink => match matches.value_of_os("symlink").map(PathBuf::from) {
                 Some(path) => Some(path),
                 None => bail!("Invalid destination folder"),
-            }
+            },
             RenameAction::Hardlink => match matches.value_of_os("hardlink").map(PathBuf::from) {
                 Some(path) => Some(path),
                 None => bail!("Invalid destination folder"),
-            }
+            },
             RenameAction::Rename => None,
         };
         Ok(Args {
@@ -287,93 +274,140 @@ fn app() -> clap::App<'static, 'static> {
         .version(crate_version!())
         .max_term_width(100)
         .setting(AppSettings::UnifiedHelpMessage)
-        .arg(Arg::with_name("file")
-             .multiple(true)
-             .help("One or more files to rename."))
-        .arg(Arg::with_name("data-dir")
-             .long("data-dir")
-             .env("IMDB_RENAME_DATA_DIR")
-             .takes_value(true)
-             .default_value_os(DATA_DIR.as_os_str())
-             .help("The location to store IMDb data files."))
-        .arg(Arg::with_name("debug")
-             .long("debug")
-             .help("Show debug messages. Use this when filing bugs."))
-        .arg(Arg::with_name("follow")
-             .long("follow")
-             .short("f")
-             .help("Follow directories and attempt to rename all child \
-                    entries."))
-        .arg(Arg::with_name("index-dir")
-             .long("index-dir")
-             .env("IMDB_RENAME_INDEX_DIR")
-             .takes_value(true)
-             .help("The location to store IMDb index files. \
-                    When absent, the default is {data-dir}/index."))
-        .arg(Arg::with_name("ngram-size")
-             .long("ngram-size")
-             .default_value("3")
-             .help("Choose the ngram size for indexing names. This is only \
-                    used at index time and otherwise ignored."))
-        .arg(Arg::with_name("ngram-type")
-             .long("ngram-type")
-             .default_value("window")
-             .possible_values(NgramType::possible_names())
-             .help("Choose the type of ngram generation. This is only used \
-                    used at index time and otherwise ignored."))
-        .arg(Arg::with_name("query")
-             .long("query")
-             .short("q")
-             .takes_value(true)
-             .help("Setting an override query is necessary if the file \
-                    path lacks sufficient information to find a matching \
-                    title. For example, if a year could not be found. It \
-                    is also useful for specifying a TV show when renaming \
-                    multiple episodes at once."))
-        .arg(Arg::with_name("re-episode")
-             .long("re-episode")
-             .takes_value(true)
-             .default_value(r"[Ee](?P<episode>[0-9]+)")
-             .help("A regex for matching episode numbers. The episode number \
-                    is extracted by looking for a 'episode' capture group."))
-        .arg(Arg::with_name("re-season")
-             .long("re-season")
-             .takes_value(true)
-             .default_value(r"[Ss](?P<season>[0-9]+)")
-             .help("A regex for matching season numbers. The season number \
-                    is extracted by looking for a 'season' capture group."))
-        .arg(Arg::with_name("re-year")
-             .long("re-year")
-             .takes_value(true)
-             .default_value(r"\b(?P<year>[0-9]{4})\b")
-             .help("A regex for matching the year. The year is extracted by \
-                    looking for a 'year' capture group."))
-        .arg(Arg::with_name("update-data")
-             .long("update-data")
-             .help("Forcefully refreshes the IMDb data and then exits."))
-        .arg(Arg::with_name("votes")
-             .long("votes")
-             .default_value("1000")
-             .help("The minimum number of votes required for results matching \
-                    a query derived from existing file names. This is not \
-                    applied to explicit queries via the -q/--query flag."))
-        .arg(Arg::with_name("update-index")
-             .long("update-index")
-             .help("Forcefully re-indexes the IMDb data and then exits."))
-        .arg(Arg::with_name("symlink")
-             .long("symlink")
-             .short("s")
-             .value_name("folder")
-             .conflicts_with("hardlink")
-             .help("Place symlink in <folder> instead of moving. Be careful of \
-                   absolute vs. relative links: the target of the symlink will \
-                   match the given input. (Unix only feature)"))
-        .arg(Arg::with_name("hardlink")
-             .long("hardlink")
-             .short("H")
-             .value_name("folder")
-             .conflicts_with("symlink")
-             .help("Place hardlink in <folder> instead of moving."))
+        .arg(
+            Arg::with_name("file")
+                .multiple(true)
+                .help("One or more files to rename."),
+        )
+        .arg(
+            Arg::with_name("data-dir")
+                .long("data-dir")
+                .env("IMDB_RENAME_DATA_DIR")
+                .takes_value(true)
+                .default_value_os(DATA_DIR.as_os_str())
+                .help("The location to store IMDb data files."),
+        )
+        .arg(
+            Arg::with_name("debug")
+                .long("debug")
+                .help("Show debug messages. Use this when filing bugs."),
+        )
+        .arg(Arg::with_name("follow").long("follow").short("f").help(
+            "Follow directories and attempt to rename all child \
+             entries.",
+        ))
+        .arg(
+            Arg::with_name("index-dir")
+                .long("index-dir")
+                .env("IMDB_RENAME_INDEX_DIR")
+                .takes_value(true)
+                .help(
+                    "The location to store IMDb index files. \
+                     When absent, the default is {data-dir}/index.",
+                ),
+        )
+        .arg(
+            Arg::with_name("ngram-size")
+                .long("ngram-size")
+                .default_value("3")
+                .help(
+                    "Choose the ngram size for indexing names. This is only \
+                     used at index time and otherwise ignored.",
+                ),
+        )
+        .arg(
+            Arg::with_name("ngram-type")
+                .long("ngram-type")
+                .default_value("window")
+                .possible_values(NgramType::possible_names())
+                .help(
+                    "Choose the type of ngram generation. This is only used \
+                     used at index time and otherwise ignored.",
+                ),
+        )
+        .arg(
+            Arg::with_name("query")
+                .long("query")
+                .short("q")
+                .takes_value(true)
+                .help(
+                    "Setting an override query is necessary if the file \
+                     path lacks sufficient information to find a matching \
+                     title. For example, if a year could not be found. It \
+                     is also useful for specifying a TV show when renaming \
+                     multiple episodes at once.",
+                ),
+        )
+        .arg(
+            Arg::with_name("re-episode")
+                .long("re-episode")
+                .takes_value(true)
+                .default_value(r"[Ee](?P<episode>[0-9]+)")
+                .help(
+                    "A regex for matching episode numbers. The episode number \
+                     is extracted by looking for a 'episode' capture group.",
+                ),
+        )
+        .arg(
+            Arg::with_name("re-season")
+                .long("re-season")
+                .takes_value(true)
+                .default_value(r"[Ss](?P<season>[0-9]+)")
+                .help(
+                    "A regex for matching season numbers. The season number \
+                     is extracted by looking for a 'season' capture group.",
+                ),
+        )
+        .arg(
+            Arg::with_name("re-year")
+                .long("re-year")
+                .takes_value(true)
+                .default_value(r"\b(?P<year>[0-9]{4})\b")
+                .help(
+                    "A regex for matching the year. The year is extracted by \
+                     looking for a 'year' capture group.",
+                ),
+        )
+        .arg(
+            Arg::with_name("update-data")
+                .long("update-data")
+                .help("Forcefully refreshes the IMDb data and then exits."),
+        )
+        .arg(
+            Arg::with_name("votes")
+                .long("votes")
+                .default_value("1000")
+                .help(
+                    "The minimum number of votes required for results matching \
+                     a query derived from existing file names. This is not \
+                     applied to explicit queries via the -q/--query flag.",
+                ),
+        )
+        .arg(
+            Arg::with_name("update-index")
+                .long("update-index")
+                .help("Forcefully re-indexes the IMDb data and then exits."),
+        )
+        .arg(
+            Arg::with_name("symlink")
+                .long("symlink")
+                .short("s")
+                .value_name("folder")
+                .conflicts_with("hardlink")
+                .help(
+                    "Place symlink in <folder> instead of moving. Be careful of \
+                     absolute vs. relative links: the target of the symlink will \
+                     match the given input. (Unix only feature)",
+                ),
+        )
+        .arg(
+            Arg::with_name("hardlink")
+                .long("hardlink")
+                .short("H")
+                .value_name("folder")
+                .conflicts_with("symlink")
+                .help("Place hardlink in <folder> instead of moving."),
+        )
 }
 
 /// Collect all file paths from a sequence of OsStrings from the command line.

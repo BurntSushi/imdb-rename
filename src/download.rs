@@ -11,12 +11,12 @@ use Result;
 ///
 /// It's not clear if this URL will remain free and open forever, although it
 /// is provided by IMDb proper. If this goes away, we'll need to switch to s3.
-const IMDB_BASE_URL: &'static str = "https://datasets.imdbws.com";
+const IMDB_BASE_URL: &str = "https://datasets.imdbws.com";
 
 /// All of the data sets we care about.
 ///
 /// We leave out cast/crew because we don't need them for renaming files.
-const DATA_SETS: &'static [&'static str] = &[
+const DATA_SETS: &[&str] = &[
     "title.akas.tsv.gz",
     "title.basics.tsv.gz",
     "title.episode.tsv.gz",
@@ -36,7 +36,7 @@ pub fn download_all<P: AsRef<Path>>(dir: P) -> Result<bool> {
     for dataset in &nonexistent {
         download_one(dir, dataset)?;
     }
-    Ok(nonexistent.len() > 0)
+    Ok(!nonexistent.is_empty())
 }
 
 /// Update will update all data set files, regardless of whether they already
