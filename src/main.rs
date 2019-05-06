@@ -16,6 +16,7 @@ extern crate walkdir;
 
 use std::env;
 use std::ffi::OsStr;
+use std::fmt;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process;
@@ -108,7 +109,7 @@ fn try_main() -> Result<()> {
         builder.force(choose(&mut searcher, results.as_slice(), 0.25)?);
     }
     let renamer = builder.build()?;
-    let proposals = renamer.propose(&mut searcher, &args.files)?;
+    let proposals = renamer.propose(&mut searcher, &args.files, args.dest_dir)?;
     if proposals.is_empty() {
         bail!("no files to rename");
     }
@@ -119,9 +120,12 @@ fn try_main() -> Result<()> {
     }
     stdout.flush()?;
 
-    if read_yesno("Are you sure you want to rename the above files? (y/n) ")? {
+    if read_yesno(&format!(
+        "Are you sure you want to {} the above files? (y/n) ",
+        &args.rename_action
+    ))? {
         for p in &proposals {
-            if let Err(err) = p.rename() {
+            if let Err(err) = p.rename(&args.rename_action) {
                 eprintln!("{}", err);
             }
         }
@@ -132,6 +136,7 @@ fn try_main() -> Result<()> {
 #[derive(Debug)]
 struct Args {
     data_dir: PathBuf,
+    dest_dir: Option<PathBuf>,
     debug: bool,
     files: Vec<PathBuf>,
     index_dir: PathBuf,
@@ -144,6 +149,28 @@ struct Args {
     update_data: bool,
     update_index: bool,
     min_votes: u32,
+    rename_action: RenameAction,
+}
+
+#[derive(Debug)]
+pub enum RenameAction {
+    Rename,
+    Symlink,
+    Hardlink,
+}
+
+impl fmt::Display for RenameAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                RenameAction::Rename => "rename",
+                RenameAction::Symlink => "symlink",
+                RenameAction::Hardlink => "hardlink",
+            }
+        )
+    }
 }
 
 impl Args {
@@ -182,8 +209,28 @@ impl Args {
             .value_of_lossy("votes")
             .unwrap()
             .parse()?;
+        let rename_action = match () {
+            _ if matches.is_present("symlink") && cfg!(windows) => {
+                bail!("symlink not supported on Windows, try hardlink");
+            }
+            _ if matches.is_present("symlink") => RenameAction::Symlink,
+            _ if matches.is_present("hardlink") => RenameAction::Hardlink,
+            _ => RenameAction::Rename,
+        };
+        let dest_dir = match rename_action {
+            RenameAction::Symlink => match matches.value_of_os("symlink").map(PathBuf::from) {
+                Some(path) => Some(path),
+                None => bail!("Invalid destination folder"),
+            },
+            RenameAction::Hardlink => match matches.value_of_os("hardlink").map(PathBuf::from) {
+                Some(path) => Some(path),
+                None => bail!("Invalid destination folder"),
+            },
+            RenameAction::Rename => None,
+        };
         Ok(Args {
             data_dir: data_dir,
+            dest_dir: dest_dir,
             debug: matches.is_present("debug"),
             files: files,
             index_dir: index_dir,
@@ -196,6 +243,7 @@ impl Args {
             update_data: matches.is_present("update-data"),
             update_index: matches.is_present("update-index"),
             min_votes: min_votes,
+            rename_action: rename_action,
         })
     }
 
@@ -317,6 +365,20 @@ fn app() -> clap::App<'static, 'static> {
         .arg(Arg::with_name("update-index")
              .long("update-index")
              .help("Forcefully re-indexes the IMDb data and then exits."))
+        .arg(Arg::with_name("symlink")
+             .long("symlink")
+             .short("s")
+             .value_name("folder")
+             .conflicts_with("hardlink")
+             .help("Place symlink in <folder> instead of moving. Be careful of \
+                    absolute vs. relative links: the target of the symlink will \
+                    match the given input. (Unix only feature)"))
+        .arg(Arg::with_name("hardlink")
+             .long("hardlink")
+             .short("H")
+             .value_name("folder")
+             .conflicts_with("symlink")
+             .help("Place hardlink in <folder> instead of moving."))
 }
 
 /// Collect all file paths from a sequence of OsStrings from the command line.

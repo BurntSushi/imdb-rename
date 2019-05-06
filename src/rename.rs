@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use imdb_index::{MediaEntity, Query, SearchResults, Searcher, TitleKind};
+use RenameAction;
 use regex::Regex;
 
 use util::choose;
@@ -33,14 +34,37 @@ impl RenameProposal {
         }
     }
 
-    /// Execute this proposal and rename the `src` to the `dst`.
-    pub fn rename(&self) -> Result<()> {
-        fs::rename(&self.src, &self.dst).map_err(|e| {
-            format_err!(
-                "error renaming '{}' to '{}': {}",
-                self.src.display(), self.dst.display(), e,
-            )
-        })?;
+    /// Execute this proposal according to `RenameAction`.
+    pub fn rename(&self, action: &RenameAction) -> Result<()> {
+        match action {
+            RenameAction::Rename => {
+                fs::rename(&self.src, &self.dst).map_err(|e| {
+                format_err!(
+                    "error renaming '{}' to '{}': {}",
+                    self.src.display(), self.dst.display(), e,
+                )})?;
+            }
+            RenameAction::Symlink => {
+                #[cfg(unix)] {
+                    use std::os::unix;
+                    unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
+                        format_err!(
+                            "error symlinking '{}' to '{}': {}",
+                            self.src.display(),
+                            self.dst.display(),
+                            e,
+                        )
+                    })?;
+                }
+            }
+            RenameAction::Hardlink => {
+                fs::hard_link(&self.src, &self.dst).map_err(|e| {
+                    format_err!(
+                        "error hardlinking '{}' to '{}': {}",
+                        self.src.display(), self.dst.display(), e,
+                    )})?;
+            }
+        }
         Ok(())
     }
 
@@ -100,10 +124,11 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         paths: &[PathBuf],
+        dest: Option<PathBuf>,
     ) -> Result<Vec<RenameProposal>> {
         let mut proposals = vec![];
         for path in paths {
-            let proposal = match self.propose_one(searcher, path) {
+            let proposal = match self.propose_one(searcher, path, &dest) {
                 None => continue,
                 Some(proposal) => proposal,
             };
@@ -152,6 +177,7 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         path: &Path,
+        dest: &Option<PathBuf>,
     ) -> Option<RenameProposal> {
         let candidate = match self.candidate(path) {
             Ok(candidate) => candidate,
@@ -178,7 +204,10 @@ impl Renamer {
         };
         Some(RenameProposal::new(
             path,
-            &candidate.path.parent,
+            match dest {
+                Some(d) => d,
+                None => &candidate.path.parent,
+            },
             &candidate.path.imdb_name(&ent),
         ))
     }
