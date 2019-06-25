@@ -1,4 +1,6 @@
 /target
+/imdb-eval/target
+/imdb-index/target
 **/*.rs.bk
 tags
 /tmp

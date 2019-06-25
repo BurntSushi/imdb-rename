@@ -114,7 +114,7 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
 
     let mut wtr = io::BufWriter::new(wtr);
     for line in lines {
-        wtr.write_all(line.as_bytes())?;
+        wtr.write_all(&line)?;
         wtr.write_all(b"\n")?;
     }
     wtr.flush()?;
