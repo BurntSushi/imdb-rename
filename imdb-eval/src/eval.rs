@@ -12,7 +12,7 @@ use imdb_index::{
 };
 use toml;
 
-use Result;
+use crate::Result;
 
 /// The default truth data used in an evaluation. It's small enough that we
 /// embed it directly into the binary.

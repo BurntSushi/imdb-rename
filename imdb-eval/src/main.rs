@@ -22,7 +22,7 @@ use std::str::FromStr;
 
 use imdb_index::{NameScorer, NgramType, Similarity};
 
-use eval::Spec;
+use crate::eval::Spec;
 
 mod eval;
 mod logger;

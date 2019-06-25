@@ -7,7 +7,7 @@ use std::result;
 
 use log::{self, Log};
 
-use Result;
+use crate::Result;
 
 /// Initialize a simple logger.
 pub fn init() -> Result<()> {

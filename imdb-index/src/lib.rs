@@ -25,14 +25,14 @@ extern crate strsim;
 #[cfg(test)]
 extern crate tempdir;
 
-pub use error::{Error, ErrorKind, Result};
-pub use index::{
+pub use crate::error::{Error, ErrorKind, Result};
+pub use crate::index::{
     AKARecordIter, Index, IndexBuilder, MediaEntity,
     NameQuery, NameScorer, NgramType,
 };
-pub use record::{AKA, Episode, Rating, Title, TitleKind};
-pub use scored::{SearchResults, Scored};
-pub use search::{Query, Searcher, Similarity};
+pub use crate::record::{AKA, Episode, Rating, Title, TitleKind};
+pub use crate::scored::{SearchResults, Scored};
+pub use crate::search::{Query, Searcher, Similarity};
 
 // A macro that creates an error that represents a bug.
 //

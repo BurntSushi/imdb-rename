@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use flate2::read::GzDecoder;
 use reqwest;
 
-use Result;
+use crate::Result;
 
 /// The base URL to the IMDb data set.
 ///

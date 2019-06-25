@@ -9,10 +9,10 @@ use failure::ResultExt;
 use memmap::Mmap;
 use serde_json;
 
-use error::{Error, ErrorKind, Result};
-use record::{Episode, Rating, Title, TitleKind};
-use scored::SearchResults;
-use util::{
+use crate::error::{Error, ErrorKind, Result};
+use crate::record::{Episode, Rating, Title, TitleKind};
+use crate::scored::SearchResults;
+use crate::util::{
     IMDB_BASICS, NiceDuration, create_file, csv_file, csv_mmap, open_file,
 };
 

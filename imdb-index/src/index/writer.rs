@@ -4,8 +4,8 @@ use std::path::Path;
 
 use byteorder::{WriteBytesExt, LE};
 
-use error::Result;
-use util::create_file;
+use crate::error::Result;
+use crate::util::create_file;
 
 /// Wraps any writer and records the current position in the writer.
 ///

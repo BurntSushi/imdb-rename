@@ -5,10 +5,10 @@ use std::u32;
 use byteorder::{ByteOrder, BE};
 use fst::{self, IntoStreamer, Streamer};
 
-use error::{Error, Result};
-use index::csv_file;
-use record::Episode;
-use util::{IMDB_EPISODE, fst_set_builder_file, fst_set_file};
+use crate::error::{Error, Result};
+use crate::index::csv_file;
+use crate::record::Episode;
+use crate::util::{IMDB_EPISODE, fst_set_builder_file, fst_set_file};
 
 /// The name of the episode index file.
 ///
@@ -314,7 +314,7 @@ fn u32_to_bytes(n: u32) -> [u8; 4] {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use index::tests::TestContext;
+    use crate::index::tests::TestContext;
     use super::Index;
 
     #[test]

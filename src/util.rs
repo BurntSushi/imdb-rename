@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use imdb_index::{Episode, MediaEntity, Scored, Searcher, Title};
 use tabwriter::TabWriter;
 
-use Result;
+use crate::Result;
 
 /// Make a choice among the search results given.
 ///

@@ -25,8 +25,8 @@ use imdb_index::{Index, IndexBuilder, NgramType, Searcher};
 use tabwriter::TabWriter;
 use walkdir::WalkDir;
 
-use rename::RenamerBuilder;
-use util::{choose, read_yesno, write_tsv};
+use crate::rename::RenamerBuilder;
+use crate::util::{choose, read_yesno, write_tsv};
 
 mod download;
 mod logger;

@@ -9,7 +9,7 @@ use failure::ResultExt;
 use fst;
 use memmap::Mmap;
 
-use error::{Error, ErrorKind, Result};
+use crate::error::{Error, ErrorKind, Result};
 
 /// The TSV file in the IMDb dataset that defines the canonical set of titles
 /// available to us. Each record contains basic information about a title,

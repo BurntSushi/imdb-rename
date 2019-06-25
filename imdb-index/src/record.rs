@@ -5,7 +5,7 @@ use std::str::FromStr;
 use csv;
 use serde::{Deserialize, Deserializer};
 
-use error::Error;
+use crate::error::Error;
 
 /// An IMDb title record.
 ///

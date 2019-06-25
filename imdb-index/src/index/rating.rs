@@ -3,9 +3,9 @@ use std::path::Path;
 use byteorder::{ByteOrder, BE};
 use fst::{self, IntoStreamer, Streamer};
 
-use error::{Error, Result};
-use record::Rating;
-use util::{IMDB_RATINGS, csv_file, fst_set_builder_file, fst_set_file};
+use crate::error::{Error, Result};
+use crate::record::Rating;
+use crate::util::{IMDB_RATINGS, csv_file, fst_set_builder_file, fst_set_file};
 
 /// The name of the ratings index file.
 ///
@@ -121,7 +121,7 @@ fn f32_to_bytes(n: f32) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use index::tests::TestContext;
+    use crate::index::tests::TestContext;
     use super::Index;
 
     #[test]

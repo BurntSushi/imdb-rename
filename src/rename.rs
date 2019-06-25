@@ -6,8 +6,8 @@ use std::sync::Mutex;
 use imdb_index::{MediaEntity, Query, SearchResults, Searcher, TitleKind};
 use regex::Regex;
 
-use util::choose;
-use Result;
+use crate::util::choose;
+use crate::Result;
 
 /// A proposal to rename a `src` file path to a `dst` file path.
 #[derive(Clone, Debug)]

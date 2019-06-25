@@ -4,8 +4,8 @@ use std::path::Path;
 
 use fst;
 
-use error::{Error, Result};
-use util::{fst_map_builder_file, fst_map_file};
+use crate::error::{Error, Result};
+use crate::util::{fst_map_builder_file, fst_map_file};
 
 /// An index that maps arbitrary length identifiers to 64-bit integers.
 ///

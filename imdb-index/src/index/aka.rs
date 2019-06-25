@@ -5,10 +5,10 @@ use std::path::Path;
 use csv;
 use memmap::Mmap;
 
-use error::{Error, Result};
-use index::{csv_file, csv_mmap, id};
-use record::AKA;
-use util::IMDB_AKAS;
+use crate::error::{Error, Result};
+use crate::index::{csv_file, csv_mmap, id};
+use crate::record::AKA;
+use crate::util::IMDB_AKAS;
 
 /// A name of the AKA record index file.
 ///
@@ -205,7 +205,7 @@ impl<R: io::Read> Iterator for AKAIndexRecords<R> {
 
 #[cfg(test)]
 mod tests {
-    use util::csv_reader_builder;
+    use crate::util::csv_reader_builder;
     use super::*;
 
     #[test]

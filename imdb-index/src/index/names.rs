@@ -15,10 +15,10 @@ use fst;
 use memmap::Mmap;
 use serde_json;
 
-use error::{Error, ErrorKind, Result};
-use index::writer::CursorWriter;
-use scored::{Scored, SearchResults};
-use util::{
+use crate::error::{Error, ErrorKind, Result};
+use crate::index::writer::CursorWriter;
+use crate::scored::{Scored, SearchResults};
+use crate::util::{
     NiceDuration, fst_map_builder_file, fst_map_file, mmap_file, open_file,
 };
 
@@ -1334,7 +1334,7 @@ fn normalize_query(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use index::tests::TestContext;
+    use crate::index::tests::TestContext;
     use super::*;
 
     // Test the actual name index.

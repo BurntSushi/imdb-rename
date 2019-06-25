@@ -10,11 +10,11 @@ use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use strsim;
 
-use error::{Error, Result};
-use index::{MediaEntity, Index, NameQuery, NameScorer};
-use record::{Episode, Rating, Title, TitleKind};
-use scored::{Scored, SearchResults};
-use util::{IMDB_BASICS, csv_file};
+use crate::error::{Error, Result};
+use crate::index::{MediaEntity, Index, NameQuery, NameScorer};
+use crate::record::{Episode, Rating, Title, TitleKind};
+use crate::scored::{Scored, SearchResults};
+use crate::util::{IMDB_BASICS, csv_file};
 
 /// A handle that permits searching IMDb media records with relevance ranking.
 ///
