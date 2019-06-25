@@ -6,6 +6,7 @@ use std::str::FromStr;
 
 use csv;
 use failure::Fail;
+use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use strsim;

@@ -1,19 +1,3 @@
-extern crate bstr;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate failure;
-extern crate flate2;
-extern crate imdb_index;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate log;
-extern crate regex;
-extern crate reqwest;
-extern crate tabwriter;
-extern crate walkdir;
-
 use std::env;
 use std::ffi::OsStr;
 use std::io::{self, Write};
@@ -22,6 +6,7 @@ use std::process;
 use std::result;
 
 use imdb_index::{Index, IndexBuilder, NgramType, Searcher};
+use lazy_static::lazy_static;
 use tabwriter::TabWriter;
 use walkdir::WalkDir;
 
@@ -91,7 +76,7 @@ fn try_main() -> Result<()> {
     };
     if args.files.is_empty() {
         let results = match results {
-            None => bail!("run with a file to rename or --query"),
+            None => failure::bail!("run with a file to rename or --query"),
             Some(ref results) => results,
         };
         return write_tsv(io::stdout(), &mut searcher, results.as_slice());
@@ -110,7 +95,7 @@ fn try_main() -> Result<()> {
     let renamer = builder.build()?;
     let proposals = renamer.propose(&mut searcher, &args.files)?;
     if proposals.is_empty() {
-        bail!("no files to rename");
+        failure::bail!("no files to rename");
     }
 
     let mut stdout = TabWriter::new(io::stdout());
@@ -240,8 +225,8 @@ fn app() -> clap::App<'static, 'static> {
     }
 
     App::new("imdb-rename")
-        .author(crate_authors!())
-        .version(crate_version!())
+        .author(clap::crate_authors!())
+        .version(clap::crate_version!())
         .max_term_width(100)
         .setting(AppSettings::UnifiedHelpMessage)
         .arg(Arg::with_name("file")

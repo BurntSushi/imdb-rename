@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 
+use failure::bail;
 use imdb_index::{Episode, MediaEntity, Scored, Searcher, Title};
 use tabwriter::TabWriter;
 

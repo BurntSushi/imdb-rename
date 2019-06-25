@@ -6,10 +6,13 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use std::vec;
 
+use failure::bail;
+use serde::{Deserialize, Serialize};
 use imdb_index::{
     Index, IndexBuilder, MediaEntity, NameScorer, NgramType, Query, Searcher,
     Similarity,
 };
+use lazy_static::lazy_static;
 use toml;
 
 use crate::Result;

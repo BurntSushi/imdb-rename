@@ -11,6 +11,7 @@ repository = "https://github.com/BurntSushi/imdb-rename"
 readme = "README.md"
 keywords = ["imdb", "movie", "index", "search", "name"]
 license = "Unlicense/MIT"
+edition = "2018"
 
 [workspace]
 members = ["imdb-eval", "imdb-index"]

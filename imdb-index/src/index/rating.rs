@@ -57,7 +57,7 @@ impl Index {
         }
         idx.finish().map_err(Error::fst)?;
 
-        info!("{} ratings indexed", count);
+        log::info!("{} ratings indexed", count);
         Index::open(index_dir)
     }
 

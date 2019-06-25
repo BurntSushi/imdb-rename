@@ -7,6 +7,7 @@ use std::time::Instant;
 use csv;
 use failure::ResultExt;
 use memmap::Mmap;
+use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::error::{Error, ErrorKind, Result};
@@ -390,7 +391,7 @@ impl IndexBuilder {
     ) -> Result<Index> {
         let data_dir = data_dir.as_ref();
         let index_dir = index_dir.as_ref();
-        debug!("opening index {}", index_dir.display());
+        log::debug!("opening index {}", index_dir.display());
 
         let config_file = open_file(index_dir.join(CONFIG))?;
         let config: Config = serde_json::from_reader(config_file)
@@ -435,7 +436,7 @@ impl IndexBuilder {
         let index_dir = index_dir.as_ref();
         fs::create_dir_all(index_dir)
             .with_context(|_| ErrorKind::path(index_dir))?;
-        info!("creating index at {}", index_dir.display());
+        log::info!("creating index at {}", index_dir.display());
 
         // Creating the rating and episode indices are completely independent
         // from the name/AKA indexes, so do them in a background thread. The
@@ -446,12 +447,12 @@ impl IndexBuilder {
             thread::spawn(move || -> Result<()> {
                 let start = Instant::now();
                 rating::Index::create(&data_dir, &index_dir)?;
-                info!("created rating index (took {})",
+                log::info!("created rating index (took {})",
                       NiceDuration::since(start));
 
                 let start = Instant::now();
                 episode::Index::create(&data_dir, &index_dir)?;
-                info!("created episode index (took {})",
+                log::info!("created episode index (took {})",
                       NiceDuration::since(start));
                 Ok(())
             })
@@ -459,7 +460,7 @@ impl IndexBuilder {
 
         let start = Instant::now();
         let mut aka_index = aka::Index::create(data_dir, index_dir)?;
-        info!("created AKA index (took {})", NiceDuration::since(start));
+        log::info!("created AKA index (took {})", NiceDuration::since(start));
 
         let start = Instant::now();
         create_name_index(
@@ -469,7 +470,7 @@ impl IndexBuilder {
             self.ngram_type,
             self.ngram_size,
         )?;
-        info!("created name index, ngram type: {}, ngram size: {} (took {})",
+        log::info!("created name index, ngram type: {}, ngram size: {} (took {})",
               self.ngram_type, self.ngram_size, NiceDuration::since(start));
 
         job.join().unwrap()?;
@@ -561,7 +562,7 @@ fn create_name_index(
     wtr.finish()?;
     twtr.finish()?;
 
-    info!("{} titles indexed", title_count);
-    info!("{} total names indexed", count);
+    log::info!("{} titles indexed", title_count);
+    log::info!("{} total names indexed", count);
     Ok(())
 }

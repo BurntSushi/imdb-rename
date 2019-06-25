@@ -3,7 +3,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use csv;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::error::Error;
 

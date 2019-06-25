@@ -11,6 +11,7 @@ repository = "https://github.com/BurntSushi/imdb-rename"
 readme = "README.md"
 keywords = ["imdb", "index", "search", "name", "evaluation"]
 license = "Unlicense/MIT"
+edition = "2018"
 
 [dependencies]
 clap = "2.32.0"
@@ -20,7 +21,6 @@ imdb-index = { version = "0.1.1", path = "../imdb-index" }
 lazy_static = "1.1"
 log = { version = "0.4", features = ["std"] }
 regex = "1"
-serde = "1"
-serde_derive = "1"
+serde = { version = "1", features = ["derive"] }
 tempdir = "0.3"
 toml = "0.4"

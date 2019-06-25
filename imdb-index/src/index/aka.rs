@@ -64,7 +64,7 @@ impl Index {
         }
         wtr.finish()?;
 
-        info!("{} alternate names indexed", count);
+        log::info!("{} alternate names indexed", count);
         Index::open(data_dir, index_dir)
     }
 

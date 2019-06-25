@@ -88,7 +88,7 @@ impl Index {
         seasons.finish().map_err(Error::fst)?;
         tvshows.finish().map_err(Error::fst)?;
 
-        info!("{} episodes indexed", episodes.len());
+        log::info!("{} episodes indexed", episodes.len());
         Index::open(index_dir)
     }
 

@@ -6,25 +6,6 @@ support fuzzy name queries and using TF-IDF-like ranking functions.
 
 #![deny(missing_docs)]
 
-extern crate byteorder;
-extern crate csv;
-extern crate failure;
-extern crate fnv;
-extern crate fst;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate log;
-extern crate memmap;
-extern crate regex;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate strsim;
-#[cfg(test)]
-extern crate tempdir;
-
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::index::{
     AKARecordIter, Index, IndexBuilder, MediaEntity,

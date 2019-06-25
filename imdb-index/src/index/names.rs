@@ -13,6 +13,7 @@ use failure::ResultExt;
 use fnv::FnvHashMap;
 use fst;
 use memmap::Mmap;
+use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::error::{Error, ErrorKind, Result};
@@ -253,7 +254,7 @@ impl IndexReader {
         let start = Instant::now();
         let mut searcher = Searcher::new(self, query);
         let results = CollectTopK::new(query.size).collect(&mut searcher);
-        debug!("search for {:?} took {}", query, NiceDuration::since(start));
+        log::debug!("search for {:?} took {}", query, NiceDuration::since(start));
         results
     }
 
@@ -348,7 +349,7 @@ impl CollectTopK {
                 self.queue.push(cmp::Reverse(scored));
             }
         }
-        debug!("collect count: {:?}, collect push count: {:?}",
+        log::debug!("collect count: {:?}, collect push count: {:?}",
                count, push_count);
 
         // Pull out the results from our heap and normalize the scores.
@@ -430,9 +431,9 @@ impl<'i> Searcher<'i> {
                 high_terms.push(format!("{}:{}:{:0.6}", term, count, ratio));
             }
         }
-        debug!("starting search for: {:?}", name);
-        debug!("{:?} low frequency terms: {:?}", low.len(), low_terms);
-        debug!("{:?} high frequency terms: {:?}", high.len(), high_terms);
+        log::debug!("starting search for: {:?}", name);
+        log::debug!("{:?} low frequency terms: {:?}", low.len(), low_terms);
+        log::debug!("{:?} high frequency terms: {:?}", high.len(), high_terms);
 
         if low.is_empty() {
             Searcher {

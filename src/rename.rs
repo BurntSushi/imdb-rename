@@ -3,7 +3,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use failure::{bail, format_err};
 use imdb_index::{MediaEntity, Query, SearchResults, Searcher, TitleKind};
+use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::util::choose;
@@ -214,7 +216,7 @@ impl Renamer {
             .kind(TitleKind::TVSpecial)
             .kind(TitleKind::Video)
             .votes_ge(self.min_votes);
-        debug!("automatic 'any' query: {:?}", query);
+        log::debug!("automatic 'any' query: {:?}", query);
         self.choose_one(searcher, &query)
     }
 
@@ -279,7 +281,7 @@ impl Renamer {
             .kind(TitleKind::TVMiniSeries)
             .kind(TitleKind::TVSeries)
             .votes_ge(self.min_votes);
-        debug!("automatic 'tvshow for episode' query: {:?}", query);
+        log::debug!("automatic 'tvshow for episode' query: {:?}", query);
         self.choose_one(searcher, &query)
     }
 
@@ -380,7 +382,7 @@ impl Renamer {
     fn name_query(&self, name: &str) -> Query {
         let name = name.replace(".", " ");
         let name = name.trim();
-        debug!("automatic name query: {:?}", name);
+        log::debug!("automatic name query: {:?}", name);
         Query::new().name(name)
     }
 

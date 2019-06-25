@@ -1,18 +1,3 @@
-#[macro_use]
-extern crate clap;
-extern crate csv;
-#[macro_use]
-extern crate failure;
-extern crate imdb_index;
-#[macro_use]
-extern crate lazy_static;
-extern crate log;
-extern crate regex;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate toml;
-
 use std::env;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -20,7 +5,9 @@ use std::process;
 use std::result;
 use std::str::FromStr;
 
+use failure::bail;
 use imdb_index::{NameScorer, NgramType, Similarity};
+use lazy_static::lazy_static;
 
 use crate::eval::Spec;
 
@@ -249,8 +236,8 @@ fn app() -> clap::App<'static, 'static> {
     }
 
     App::new("imdb-rename")
-        .author(crate_authors!())
-        .version(crate_version!())
+        .author(clap::crate_authors!())
+        .version(clap::crate_version!())
         .max_term_width(100)
         .setting(AppSettings::UnifiedHelpMessage)
         .arg(Arg::with_name("data-dir")

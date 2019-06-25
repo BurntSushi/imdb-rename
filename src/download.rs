@@ -2,6 +2,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 
+use failure::bail;
 use flate2::read::GzDecoder;
 use reqwest;
 
@@ -58,9 +59,9 @@ fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
     let mut outfile = File::create(&outpath)?;
 
     let url = format!("{}/{}", IMDB_BASE_URL, dataset);
-    info!("downloading {} to {}", url, outpath.display());
+    log::info!("downloading {} to {}", url, outpath.display());
     let mut resp = GzDecoder::new(reqwest::get(&url)?.error_for_status()?);
-    info!("sorting CSV records");
+    log::info!("sorting CSV records");
     write_sorted_csv_records(&mut resp, &mut outfile)?;
     Ok(())
 }
