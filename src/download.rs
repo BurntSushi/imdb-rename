@@ -99,7 +99,7 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
     wtr: W,
 ) -> Result<()> {
     use std::io::Write;
-    use bstr::io::BufReadExt;
+    use bstr::{io::BufReadExt, ByteSlice};
 
     // We actually only sort the raw lines here instead of parsing CSV records,
     // since parsing into CSV records has fairly substantial memory overhead.
@@ -114,7 +114,23 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
     lines[1..].sort_unstable();
 
     let mut wtr = io::BufWriter::new(wtr);
-    for line in lines {
+    let mut prev = None;
+    for (i, line) in lines.iter().enumerate() {
+        // *sigh* ... Looks like the data downloaded is corrupt sometimes,
+        // where there are duplicate rows.
+        let first = match line.split_str("\t").next() {
+            Some(first) => first,
+            None => {
+                bail!(
+                    "expected to find one tab-delimited field in '{:?}'",
+                    line.as_bstr(),
+                )
+            }
+        };
+        if i > 0 && prev == Some(first) {
+            continue;
+        }
+        prev = Some(first);
         wtr.write_all(&line)?;
         wtr.write_all(b"\n")?;
     }
