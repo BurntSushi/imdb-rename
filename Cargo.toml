@@ -1,6 +1,6 @@
 [package]
 name = "imdb-rename"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
 description = """
 A command line utility for searching IMDb and renaming your media files.
@@ -21,7 +21,7 @@ bstr = { version = "0.2.0", default-features = false, features = ["std"] }
 clap = "2.32.0"
 failure = "0.1"
 flate2 = "1"
-imdb-index = { version = "0.1.1", path = "imdb-index" }
+imdb-index = { version = "0.1.3", path = "imdb-index" }
 lazy_static = "1.1"
 log = { version = "0.4", features = ["std"] }
 regex = "1"
