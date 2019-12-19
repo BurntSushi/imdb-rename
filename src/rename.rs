@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -16,33 +17,103 @@ use crate::Result;
 pub struct RenameProposal {
     src: PathBuf,
     dst: PathBuf,
+    action: RenameAction,
+}
+
+/// The action to take when renaming a file.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum RenameAction {
+    /// This does a simple rename of the file.
+    Rename,
+    /// This creates a symlink to the given file.
+    Symlink,
+    /// This creates a hardlink to the given file.
+    Hardlink,
+}
+
+impl fmt::Display for RenameAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RenameAction::Rename => "rename",
+            RenameAction::Symlink => "symlink",
+            RenameAction::Hardlink => "hardlink",
+        }.fmt(f)
+    }
+}
+
+impl RenameAction {
+    fn is_link(&self) -> bool {
+        match *self {
+            RenameAction::Rename => false,
+            RenameAction::Symlink | RenameAction::Hardlink => true,
+        }
+    }
 }
 
 impl RenameProposal {
     /// Create a new proposal with the given source and destination. The
     /// destination is constructed by joining `dst_parent` with `dst_name`.
     /// `dst_name` is sanitized to be safe as a file name.
-    fn new(src: &Path, dst_parent: &Path, dst_name: &str) -> RenameProposal {
+    ///
+    /// The given action determines whether to rename the source to the
+    /// destination, create a symlink or create a hardlink.
+    fn new(
+        src: PathBuf,
+        dst_parent: &Path,
+        dst_name: &str,
+        action: RenameAction
+    ) -> RenameProposal {
         lazy_static! {
             static ref RE_BAD_PATH_CHARS: Regex = Regex::new(
                 r"[\x00/]",
             ).unwrap();
         }
         let name = RE_BAD_PATH_CHARS.replace_all(dst_name, "_");
+
         RenameProposal {
-            src: src.to_path_buf(),
+            src,
             dst: dst_parent.join(&*name),
+            action,
         }
     }
 
-    /// Execute this proposal and rename the `src` to the `dst`.
+    /// Execute this proposal according to `RenameAction`.
     pub fn rename(&self) -> Result<()> {
-        fs::rename(&self.src, &self.dst).map_err(|e| {
-            format_err!(
-                "error renaming '{}' to '{}': {}",
-                self.src.display(), self.dst.display(), e,
-            )
-        })?;
+        match self.action {
+            RenameAction::Rename => {
+                fs::rename(&self.src, &self.dst).map_err(|e| {
+                    format_err!(
+                        "error renaming '{}' to '{}': {}",
+                        self.src.display(), self.dst.display(), e,
+                    )
+                })?;
+            }
+            #[cfg(not(unix))]
+            RenameAction::Symlink => {
+                bail!("symlinks are only supported for Unix")
+            }
+            #[cfg(unix)]
+            RenameAction::Symlink => {
+                use std::os::unix;
+
+                unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
+                    format_err!(
+                        "error symlinking '{}' to '{}': {}",
+                        self.src.display(),
+                        self.dst.display(),
+                        e,
+                    )
+                })?;
+            }
+            RenameAction::Hardlink => {
+                fs::hard_link(&self.src, &self.dst).map_err(|e| {
+                    format_err!(
+                        "error hardlinking '{}' to '{}': {}",
+                        self.src.display(), self.dst.display(), e,
+                    )
+                })?;
+            }
+        }
         Ok(())
     }
 
@@ -94,18 +165,28 @@ impl Renamer {
     /// permit changing entries in a directory and a directory itself in one
     /// go.
     ///
+    /// An optional destination can be given, which when present, is used as
+    /// the directory in which renames/links are created. Similarly, the action
+    /// given specifies whether the proposal should rename a file, symlink to
+    /// it or hardlink to it.
+    ///
     /// Note that this may log some types of errors to stderr but otherwise
     /// continue, which means that the set of proposals returned may not cover
-    /// all paths given. Errors resulting from reading the index will stop the
-    /// entire process.
+    /// all paths given. Errors resulting from reading the index will cause an
+    /// error to be returned.
     pub fn propose(
         &self,
         searcher: &mut Searcher,
         paths: &[PathBuf],
+        dest: Option<PathBuf>,
+        action: RenameAction,
     ) -> Result<Vec<RenameProposal>> {
         let mut proposals = vec![];
         for path in paths {
-            let proposal = match self.propose_one(searcher, path) {
+            let result = self.propose_one(
+                searcher, path, dest.as_deref(), action,
+            );
+            let proposal = match result {
                 None => continue,
                 Some(proposal) => proposal,
             };
@@ -154,6 +235,8 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         path: &Path,
+        dest: Option<&Path>,
+        action: RenameAction,
     ) -> Option<RenameProposal> {
         let candidate = match self.candidate(path) {
             Ok(candidate) => candidate,
@@ -178,10 +261,53 @@ impl Renamer {
                 return None;
             }
         };
+
+        // Setup our sources and destinations. They get tweaked depending on
+        // what our rename action is and whether a destination directory was
+        // explicitly given.
+        let dest_name = candidate.path.imdb_name(&ent);
+        let mut src_path = path.to_path_buf();
+        let mut dest_parent_dir = dest
+            .map(|d| d.to_path_buf())
+            .unwrap_or(candidate.path.parent);
+
+        // A symlink was requested to be created in a destination presumably
+        // different than the current directory. This means that the file
+        // specified on the commandline will need to be an absolute path,
+        // otherwise the symlink will not point to the correct place.
+        if dest.is_some() && action == RenameAction::Symlink {
+            src_path = match src_path.canonicalize() {
+                Ok(src_path) => src_path,
+                Err(err) => {
+                    eprintln!(
+                        "[skipping] error making {} an absolute path: {}",
+                        src_path.display(),
+                        err,
+                    );
+                    return None;
+                }
+            };
+        }
+        // A symlink or hardlink was requested to be created without a
+        // destination specified. In this case, it only makes sense to place
+        // the symlink in the current directory being executed from, otherwise
+        // potentially relative file paths won't match up.
+        if dest.is_none() && action.is_link() {
+            dest_parent_dir = match std::env::current_dir() {
+                Ok(cwd) => cwd,
+                Err(err) => {
+                    eprintln!("[skipping] error getting current directory: {}",
+                        err,
+                    );
+                    return None;
+                }
+            };
+        }
         Some(RenameProposal::new(
-            path,
-            &candidate.path.parent,
-            &candidate.path.imdb_name(&ent),
+            src_path,
+            &dest_parent_dir,
+            &dest_name,
+            action,
         ))
     }
 
@@ -305,7 +431,7 @@ impl Renamer {
         }
     }
 
-    /// Produce a structure candidate for renaming from a source path.
+    /// Produce a structured candidate for renaming from a source path.
     ///
     /// The candidate returned represents a heuristic analysis performed on
     /// the source path, and in particular, represents what we think the path
