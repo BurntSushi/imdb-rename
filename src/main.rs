@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use tabwriter::TabWriter;
 use walkdir::WalkDir;
 
-use crate::rename::RenamerBuilder;
+use crate::rename::{RenamerBuilder, RenameAction};
 use crate::util::{choose, read_yesno, write_tsv};
 
 mod download;
@@ -93,7 +93,11 @@ fn try_main() -> Result<()> {
         builder.force(choose(&mut searcher, results.as_slice(), 0.25)?);
     }
     let renamer = builder.build()?;
-    let proposals = renamer.propose(&mut searcher, &args.files)?;
+    let proposals = renamer.propose(
+        &mut searcher,
+        &args.files,
+        args.dest_dir,
+        args.rename_action)?;
     if proposals.is_empty() {
         failure::bail!("no files to rename");
     }
@@ -104,7 +108,10 @@ fn try_main() -> Result<()> {
     }
     stdout.flush()?;
 
-    if read_yesno("Are you sure you want to rename the above files? (y/n) ")? {
+    if read_yesno(&format!(
+        "Are you sure you want to {action} the above files? (y/n) ",
+        action = &args.rename_action
+    ))? {
         for p in &proposals {
             if let Err(err) = p.rename() {
                 eprintln!("{}", err);
@@ -117,6 +124,7 @@ fn try_main() -> Result<()> {
 #[derive(Debug)]
 struct Args {
     data_dir: PathBuf,
+    dest_dir: Option<PathBuf>,
     debug: bool,
     files: Vec<PathBuf>,
     index_dir: PathBuf,
@@ -129,6 +137,7 @@ struct Args {
     update_data: bool,
     update_index: bool,
     min_votes: u32,
+    rename_action: RenameAction,
 }
 
 impl Args {
@@ -147,6 +156,9 @@ impl Args {
             .value_of_os("data-dir")
             .map(PathBuf::from)
             .unwrap();
+        let dest_dir = matches
+            .value_of_os("dest-dir")
+            .map(PathBuf::from);
         let index_dir = matches
             .value_of_os("index-dir")
             .map(PathBuf::from)
@@ -167,8 +179,23 @@ impl Args {
             .value_of_lossy("votes")
             .unwrap()
             .parse()?;
+        let rename_action = {
+            if matches.is_present("symlink") {
+                if !cfg!(unix) {
+                    failure::bail!(
+                        "Symlink currently supported only on Unix platforms, \
+                        try hardlink (-H)");
+                }
+                RenameAction::Symlink
+            } else if matches.is_present("hardlink") {
+                RenameAction::Hardlink
+            } else {
+                RenameAction::Rename
+            }
+        };
         Ok(Args {
             data_dir: data_dir,
+            dest_dir: dest_dir,
             debug: matches.is_present("debug"),
             files: files,
             index_dir: index_dir,
@@ -181,6 +208,7 @@ impl Args {
             update_data: matches.is_present("update-data"),
             update_index: matches.is_present("update-index"),
             min_votes: min_votes,
+            rename_action: rename_action,
         })
     }
 
@@ -238,6 +266,14 @@ fn app() -> clap::App<'static, 'static> {
              .takes_value(true)
              .default_value_os(DATA_DIR.as_os_str())
              .help("The location to store IMDb data files."))
+        .arg(Arg::with_name("dest-dir")
+             .long("dest-dir")
+             .short("d")
+             .env("IMDB_RENAME_DEST_DIR")
+             .takes_value(true)
+             .help("The output directory of renamed files \
+                 (or symlinks/hardlinks with the -s/-H options). \
+                 By default, files are renamed in place."))
         .arg(Arg::with_name("debug")
              .long("debug")
              .help("Show debug messages. Use this when filing bugs."))
@@ -302,6 +338,16 @@ fn app() -> clap::App<'static, 'static> {
         .arg(Arg::with_name("update-index")
              .long("update-index")
              .help("Forcefully re-indexes the IMDb data and then exits."))
+        .arg(Arg::with_name("symlink")
+             .long("symlink")
+             .short("s")
+             .conflicts_with("hardlink")
+             .help("Create a symlink instead of renaming. (Unix only feature)"))
+        .arg(Arg::with_name("hardlink")
+             .long("hardlink")
+             .short("H")
+             .conflicts_with("symlink")
+             .help("Create a hardlink instead of renaming."))
 }
 
 /// Collect all file paths from a sequence of OsStrings from the command line.

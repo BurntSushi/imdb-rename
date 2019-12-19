@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -16,33 +17,91 @@ use crate::Result;
 pub struct RenameProposal {
     src: PathBuf,
     dst: PathBuf,
+    action: RenameAction,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum RenameAction {
+    Rename,
+    Symlink,
+    Hardlink,
+}
+
+impl fmt::Display for RenameAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                RenameAction::Rename => "rename",
+                RenameAction::Symlink => "symlink",
+                RenameAction::Hardlink => "hardlink",
+            }
+        )
+    }
 }
 
 impl RenameProposal {
     /// Create a new proposal with the given source and destination. The
     /// destination is constructed by joining `dst_parent` with `dst_name`.
     /// `dst_name` is sanitized to be safe as a file name.
-    fn new(src: &Path, dst_parent: &Path, dst_name: &str) -> RenameProposal {
+    fn new(
+        src: PathBuf,
+        dst_parent: &Path,
+        dst_name: &str,
+        action: RenameAction
+    ) -> RenameProposal {
         lazy_static! {
             static ref RE_BAD_PATH_CHARS: Regex = Regex::new(
                 r"[\x00/]",
             ).unwrap();
         }
         let name = RE_BAD_PATH_CHARS.replace_all(dst_name, "_");
+
         RenameProposal {
-            src: src.to_path_buf(),
+            src,
             dst: dst_parent.join(&*name),
+            action,
         }
     }
 
-    /// Execute this proposal and rename the `src` to the `dst`.
+    /// Execute this proposal according to `RenameAction`.
     pub fn rename(&self) -> Result<()> {
-        fs::rename(&self.src, &self.dst).map_err(|e| {
-            format_err!(
-                "error renaming '{}' to '{}': {}",
-                self.src.display(), self.dst.display(), e,
-            )
-        })?;
+        match self.action {
+            RenameAction::Rename => {
+                fs::rename(&self.src, &self.dst).map_err(|e| {
+                format_err!(
+                    "error renaming '{}' to '{}': {}",
+                    self.src.display(), self.dst.display(), e,
+                )})?;
+            }
+            RenameAction::Symlink => {
+                #[cfg(not(unix))] {
+                    use std::io::{Error, ErrorKind::Other};
+                    return Err(Error::new(Other,
+                        "Symlink support currently for Unix-like OSes only").into()
+                    );
+                }
+                #[cfg(unix)] {
+                    use std::os::unix;
+                    unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
+                        format_err!(
+                            "error symlinking '{}' to '{}': {}",
+                            self.src.display(),
+                            self.dst.display(),
+                            e,
+                        )
+                    })?;
+                }
+            }
+            RenameAction::Hardlink => {
+                fs::hard_link(&self.src, &self.dst).map_err(|e| {
+                    format_err!(
+                        "error hardlinking '{}' to '{}': {}",
+                        self.src.display(), self.dst.display(), e,
+                    )})?;
+            }
+        }
         Ok(())
     }
 
@@ -102,10 +161,12 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         paths: &[PathBuf],
+        dest: Option<PathBuf>,
+        action: RenameAction,
     ) -> Result<Vec<RenameProposal>> {
         let mut proposals = vec![];
         for path in paths {
-            let proposal = match self.propose_one(searcher, path) {
+            let proposal = match self.propose_one(searcher, path, &dest, action) {
                 None => continue,
                 Some(proposal) => proposal,
             };
@@ -154,6 +215,8 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         path: &Path,
+        dest: &Option<PathBuf>,
+        action: RenameAction,
     ) -> Option<RenameProposal> {
         let candidate = match self.candidate(path) {
             Ok(candidate) => candidate,
@@ -178,10 +241,53 @@ impl Renamer {
                 return None;
             }
         };
+
+        let mut path = path.to_path_buf();
+        let mut cwd = None;
+
+        use RenameAction::{Symlink, Hardlink};
+        if dest.is_some() && action == Symlink {
+            // A symlink was requested to be created in a destination presumably
+            // different than the current directory. This means that the file
+            // specified on the commandline will need to be an absolute path,
+            // otherwise the symlink will not point to the correct place.
+
+            path = match path.canonicalize() {
+                Ok(path) => path,
+                Err(err) => {
+                    eprintln!("[skipping] error making {} an absolute path: {}",
+                        path.display(),
+                        err,
+                    );
+                    return None;
+                }
+            };
+        }
+
+        if dest.is_none() && (action == Symlink || action == Hardlink) {
+            // A symlink or hardlink was requested to be created without a
+            // destination specified. In this case, it only makes sense to place
+            // the symlink in the current directory being executed from,
+            // otherwise potentially relative file paths won't match up.
+
+            cwd = match std::env::current_dir() {
+                Ok(cwd) => Some(cwd),
+                Err(err) => {
+                    eprintln!("[skipping] error getting current directory: {}",
+                        err,
+                    );
+                    return None;
+                }
+            };
+        }
+
         Some(RenameProposal::new(
             path,
-            &candidate.path.parent,
+            cwd.as_ref().unwrap_or(
+                dest.as_ref().unwrap_or(
+                    &candidate.path.parent)),
             &candidate.path.imdb_name(&ent),
+            action,
         ))
     }
 
