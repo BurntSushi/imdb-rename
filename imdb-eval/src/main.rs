@@ -78,8 +78,11 @@ fn run_eval(
     specs: Vec<Spec>,
 ) -> Result<()> {
     if !data_dir.exists() {
-        bail!("data directory {} does not exist; please use \
-               imdb-rename to create it", data_dir.display());
+        bail!(
+            "data directory {} does not exist; please use \
+               imdb-rename to create it",
+            data_dir.display()
+        );
     }
 
     let mut wtr = csv::Writer::from_writer(io::stdout());
@@ -131,35 +134,39 @@ struct Args {
 impl Args {
     /// Build a structured set of arguments from clap's matches.
     fn from_matches(matches: &clap::ArgMatches) -> Result<Args> {
-        let data_dir = matches
-            .value_of_os("data-dir")
-            .map(PathBuf::from)
-            .unwrap();
-        let eval_dir = matches
-            .value_of_os("eval-dir")
-            .map(PathBuf::from)
-            .unwrap();
+        let data_dir =
+            matches.value_of_os("data-dir").map(PathBuf::from).unwrap();
+        let eval_dir =
+            matches.value_of_os("eval-dir").map(PathBuf::from).unwrap();
         let specs = match matches.values_of_lossy("specs") {
             None => vec![],
             Some(specs) => specs,
         };
-        let similarities = parse_many_lossy(matches, "sim", vec![
-            Similarity::None,
-            Similarity::Levenshtein,
-            Similarity::Jaro,
-            Similarity::JaroWinkler,
-        ])?;
-        let scorers = parse_many_lossy(matches, "scorer", vec![
-            OptionalNameScorer::from(NameScorer::OkapiBM25),
-            OptionalNameScorer::from(NameScorer::TFIDF),
-            OptionalNameScorer::from(NameScorer::Jaccard),
-            OptionalNameScorer::from(NameScorer::QueryRatio),
-        ])?.into_iter().map(|s| s.0).collect();
-        let ngram_types = parse_many_lossy(
+        let similarities = parse_many_lossy(
             matches,
-            "ngram-type",
-            vec![NgramType::Window],
+            "sim",
+            vec![
+                Similarity::None,
+                Similarity::Levenshtein,
+                Similarity::Jaro,
+                Similarity::JaroWinkler,
+            ],
         )?;
+        let scorers = parse_many_lossy(
+            matches,
+            "scorer",
+            vec![
+                OptionalNameScorer::from(NameScorer::OkapiBM25),
+                OptionalNameScorer::from(NameScorer::TFIDF),
+                OptionalNameScorer::from(NameScorer::Jaccard),
+                OptionalNameScorer::from(NameScorer::QueryRatio),
+            ],
+        )?
+        .into_iter()
+        .map(|s| s.0)
+        .collect();
+        let ngram_types =
+            parse_many_lossy(matches, "ngram-type", vec![NgramType::Window])?;
         Ok(Args {
             data_dir: data_dir,
             debug: matches.is_present("debug"),
@@ -326,12 +333,7 @@ impl FromStr for OptionalNameScorer {
     fn from_str(
         s: &str,
     ) -> result::Result<OptionalNameScorer, imdb_index::Error> {
-        let opt =
-            if s == "none" {
-                None
-            } else {
-                Some(s.parse()?)
-            };
+        let opt = if s == "none" { None } else { Some(s.parse()?) };
         Ok(OptionalNameScorer(opt))
     }
 }
@@ -343,7 +345,7 @@ impl From<NameScorer> for OptionalNameScorer {
 }
 
 /// Parse a sequence of values from clap.
-fn parse_many_lossy<E: failure::Fail, T: FromStr<Err=E>>(
+fn parse_many_lossy<E: failure::Fail, T: FromStr<Err = E>>(
     matches: &clap::ArgMatches,
     name: &str,
     default: Vec<T>,

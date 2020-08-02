@@ -144,9 +144,7 @@ pub enum ErrorKind {
 
 impl ErrorKind {
     /// A convenience routine for creating an error associated with a path.
-    pub(crate) fn path<P: AsRef<Path>>(
-        path: P,
-    ) -> ErrorKind {
+    pub(crate) fn path<P: AsRef<Path>>(path: P) -> ErrorKind {
         ErrorKind::Path(path.as_ref().to_path_buf())
     }
 }
@@ -154,14 +152,13 @@ impl ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ErrorKind::Path(ref path) => {
-                write!(f, "{}", path.display())
-            }
-            ErrorKind::VersionMismatch { expected, got } => {
-                write!(f, "index version mismatch: expected version {} \
+            ErrorKind::Path(ref path) => write!(f, "{}", path.display()),
+            ErrorKind::VersionMismatch { expected, got } => write!(
+                f,
+                "index version mismatch: expected version {} \
                            but got version {}. Please rebuild the index.",
-                           expected, got)
-            }
+                expected, got
+            ),
             ErrorKind::UnknownTitle(ref unk) => {
                 write!(f, "unrecognized title type: '{}'", unk)
             }
@@ -182,21 +179,11 @@ impl fmt::Display for ErrorKind {
                               https://github.com/BurntSushi/imdb-rename";
                 write!(f, "BUG: {}\n{}", msg, report)
             }
-            ErrorKind::Config(ref msg) => {
-                write!(f, "config error: {}", msg)
-            }
-            ErrorKind::Csv(ref msg) => {
-                write!(f, "{}", msg)
-            }
-            ErrorKind::Fst(ref msg) => {
-                write!(f, "fst error: {}", msg)
-            }
-            ErrorKind::Io => {
-                write!(f, "I/O error")
-            }
-            ErrorKind::Number => {
-                write!(f, "error parsing number")
-            }
+            ErrorKind::Config(ref msg) => write!(f, "config error: {}", msg),
+            ErrorKind::Csv(ref msg) => write!(f, "{}", msg),
+            ErrorKind::Fst(ref msg) => write!(f, "fst error: {}", msg),
+            ErrorKind::Io => write!(f, "I/O error"),
+            ErrorKind::Number => write!(f, "error parsing number"),
             ErrorKind::__Nonexhaustive => panic!("invalid error"),
         }
     }

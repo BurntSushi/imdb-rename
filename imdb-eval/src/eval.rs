@@ -7,12 +7,12 @@ use std::time::{Duration, Instant};
 use std::vec;
 
 use failure::bail;
-use serde::{Deserialize, Serialize};
 use imdb_index::{
     Index, IndexBuilder, MediaEntity, NameScorer, NgramType, Query, Searcher,
     Similarity,
 };
 use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
 use toml;
 
 use crate::Result;
@@ -32,7 +32,7 @@ lazy_static! {
 #[derive(Clone, Debug, Deserialize)]
 struct Truth {
     #[serde(rename = "task")]
-    tasks: Vec<Task>
+    tasks: Vec<Task>,
 }
 
 /// A task or "information need" defined by the truth data. Each task
@@ -98,8 +98,10 @@ impl Spec {
     /// This returns an error if the given size is less than `1`.
     pub fn with_result_size(mut self, result_size: usize) -> Result<Spec> {
         if result_size < 1 {
-            bail!("result size {} is invalid, must be greater than 0",
-                  result_size);
+            bail!(
+                "result size {} is invalid, must be greater than 0",
+                result_size
+            );
         }
         self.result_size = result_size;
         Ok(self)

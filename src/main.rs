@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use tabwriter::TabWriter;
 use walkdir::WalkDir;
 
-use crate::rename::{RenamerBuilder, RenameAction};
+use crate::rename::{RenameAction, RenamerBuilder};
 use crate::util::{choose, read_yesno, write_tsv};
 
 mod download;
@@ -97,7 +97,8 @@ fn try_main() -> Result<()> {
         &mut searcher,
         &args.files,
         args.dest_dir,
-        args.rename_action)?;
+        args.rename_action,
+    )?;
     if proposals.is_empty() {
         failure::bail!("no files to rename");
     }
@@ -149,36 +150,21 @@ impl Args {
                 .unwrap_or(vec![]),
             matches.is_present("follow"),
         );
-        let query = matches
-            .value_of_lossy("query")
-            .map(|q| q.into_owned());
-        let data_dir = matches
-            .value_of_os("data-dir")
-            .map(PathBuf::from)
-            .unwrap();
-        let dest_dir = matches
-            .value_of_os("dest-dir")
-            .map(PathBuf::from);
+        let query = matches.value_of_lossy("query").map(|q| q.into_owned());
+        let data_dir =
+            matches.value_of_os("data-dir").map(PathBuf::from).unwrap();
+        let dest_dir = matches.value_of_os("dest-dir").map(PathBuf::from);
         let index_dir = matches
             .value_of_os("index-dir")
             .map(PathBuf::from)
             .unwrap_or(data_dir.join("index"));
-        let regex_episode = matches
-            .value_of_lossy("re-episode")
-            .unwrap()
-            .into_owned();
-        let regex_season = matches
-            .value_of_lossy("re-season")
-            .unwrap()
-            .into_owned();
-        let regex_year = matches
-            .value_of_lossy("re-year")
-            .unwrap()
-            .into_owned();
-        let min_votes = matches
-            .value_of_lossy("votes")
-            .unwrap()
-            .parse()?;
+        let regex_episode =
+            matches.value_of_lossy("re-episode").unwrap().into_owned();
+        let regex_season =
+            matches.value_of_lossy("re-season").unwrap().into_owned();
+        let regex_year =
+            matches.value_of_lossy("re-year").unwrap().into_owned();
+        let min_votes = matches.value_of_lossy("votes").unwrap().parse()?;
         let rename_action = {
             if matches.is_present("symlink") {
                 if !cfg!(unix) {
@@ -200,8 +186,14 @@ impl Args {
             debug: matches.is_present("debug"),
             files: files,
             index_dir: index_dir,
-            ngram_size: matches.value_of_lossy("ngram-size").unwrap().parse()?,
-            ngram_type: matches.value_of_lossy("ngram-type").unwrap().parse()?,
+            ngram_size: matches
+                .value_of_lossy("ngram-size")
+                .unwrap()
+                .parse()?,
+            ngram_type: matches
+                .value_of_lossy("ngram-type")
+                .unwrap()
+                .parse()?,
             query: query,
             regex_episode: regex_episode,
             regex_season: regex_season,

@@ -5,7 +5,9 @@ use fst::{self, IntoStreamer, Streamer};
 
 use crate::error::{Error, Result};
 use crate::record::Rating;
-use crate::util::{IMDB_RATINGS, csv_file, fst_set_builder_file, fst_set_file};
+use crate::util::{
+    csv_file, fst_set_builder_file, fst_set_file, IMDB_RATINGS,
+};
 
 /// The name of the ratings index file.
 ///
@@ -91,7 +93,7 @@ fn read_rating(bytes: &[u8]) -> Result<Rating> {
     Ok(Rating {
         id: id,
         rating: BE::read_f32(&bytes[i..]),
-        votes: BE::read_u32(&bytes[i+4..]),
+        votes: BE::read_u32(&bytes[i + 4..]),
     })
 }
 
@@ -121,8 +123,8 @@ fn f32_to_bytes(n: f32) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use crate::index::tests::TestContext;
     use super::Index;
+    use crate::index::tests::TestContext;
 
     #[test]
     fn basics() {

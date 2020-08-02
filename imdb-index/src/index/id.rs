@@ -41,9 +41,7 @@ impl IndexSortedWriter<io::BufWriter<File>> {
     pub fn from_path<P: AsRef<Path>>(
         path: P,
     ) -> Result<IndexSortedWriter<io::BufWriter<File>>> {
-        Ok(IndexSortedWriter {
-            wtr: fst_map_builder_file(path)?,
-        })
+        Ok(IndexSortedWriter { wtr: fst_map_builder_file(path)? })
     }
 }
 

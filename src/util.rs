@@ -31,7 +31,7 @@ pub fn choose(
 
     write_tsv(io::stdout(), searcher, results)?;
     let choice = read_number(1, results.len())?;
-    Ok(results[choice-1].clone().into_value())
+    Ok(results[choice - 1].clone().into_value())
 }
 
 /// Reads a number from stdin in the given inclusive range.
@@ -44,8 +44,12 @@ pub fn read_number(start: usize, end: usize) -> Result<usize> {
     io::stdin().read_line(&mut response)?;
     let choice: usize = response.trim().parse()?;
     if choice < start || choice > end {
-        bail!("invalid choice: {} is not in range [{}-{}]",
-              choice, start, end);
+        bail!(
+            "invalid choice: {} is not in range [{}-{}]",
+            choice,
+            start,
+            end
+        );
     }
     Ok(choice)
 }
@@ -80,13 +84,20 @@ pub fn write_tsv<W: io::Write>(
         let (score, ent) = (sr.score(), sr.value());
         if let Some(ep) = ent.episode() {
             match searcher.index().title(&ep.tvshow_id)? {
-                None => write_tsv_title(&mut wtr, i+1, score, ent)?,
+                None => write_tsv_title(&mut wtr, i + 1, score, ent)?,
                 Some(tvshow) => {
-                    write_tsv_episode(&mut wtr, i+1, score, ent, &tvshow, ep)?;
+                    write_tsv_episode(
+                        &mut wtr,
+                        i + 1,
+                        score,
+                        ent,
+                        &tvshow,
+                        ep,
+                    )?;
                 }
             }
         } else {
-            write_tsv_title(&mut wtr, i+1, score, ent)?;
+            write_tsv_title(&mut wtr, i + 1, score, ent)?;
         }
     }
     wtr.flush()?;
@@ -107,7 +118,8 @@ fn write_tsv_title<W: io::Write>(
         ent.title().id,
         ent.title().kind,
         ent.title().title,
-        ent.title().start_year
+        ent.title()
+            .start_year
             .map(|y| y.to_string())
             .unwrap_or("N/A".to_string()),
     )?;
@@ -137,7 +149,8 @@ fn write_tsv_episode<W: io::Write>(
         ent.title().id,
         ent.title().kind,
         ent.title().title,
-        ent.title().start_year
+        ent.title()
+            .start_year
             .map(|y| y.to_string())
             .unwrap_or("N/A".to_string()),
         tvinfo,
