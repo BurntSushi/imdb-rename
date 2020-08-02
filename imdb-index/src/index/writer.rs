@@ -29,10 +29,7 @@ impl CursorWriter<io::BufWriter<File>> {
 impl<W: io::Write> CursorWriter<W> {
     /// Wrap the given writer with a counter.
     pub fn new(wtr: W) -> CursorWriter<W> {
-        CursorWriter {
-            wtr: wtr,
-            pos: 0,
-        }
+        CursorWriter { wtr: wtr, pos: 0 }
     }
 
     /// Return the current position of this writer.

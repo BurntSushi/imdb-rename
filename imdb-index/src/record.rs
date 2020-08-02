@@ -52,7 +52,7 @@ pub struct Title {
     /// The runtime, in minutes, of this title.
     #[serde(
         rename = "runtimeMinutes",
-        deserialize_with = "csv::invalid_option",
+        deserialize_with = "csv::invalid_option"
     )]
     pub runtime_minutes: Option<u32>,
     /// A comma separated string of genres.
@@ -174,7 +174,7 @@ impl FromStr for TitleKind {
 pub struct AKA {
     /// The IMDb identifier that these AKA records describe.
     #[serde(rename = "titleId")]
-    pub id:  String,
+    pub id: String,
     /// The order in which an AKA record should be preferred.
     #[serde(rename = "ordering")]
     pub order: i32,
@@ -197,7 +197,7 @@ pub struct AKA {
     /// not.
     #[serde(
         rename = "isOriginalTitle",
-        deserialize_with = "optional_number_as_bool",
+        deserialize_with = "optional_number_as_bool"
     )]
     pub is_original_title: Option<bool>,
 }
@@ -219,14 +219,14 @@ pub struct Episode {
     /// The season in which this episode is contained, if it exists.
     #[serde(
         rename = "seasonNumber",
-        deserialize_with = "csv::invalid_option",
+        deserialize_with = "csv::invalid_option"
     )]
     pub season: Option<u32>,
     /// The episode number of the season in which this episode is contained, if
     /// it exists.
     #[serde(
         rename = "episodeNumber",
-        deserialize_with = "csv::invalid_option",
+        deserialize_with = "csv::invalid_option"
     )]
     pub episode: Option<u32>,
 }
@@ -246,13 +246,15 @@ pub struct Rating {
 }
 
 fn number_as_bool<'de, D>(de: D) -> Result<bool, D::Error>
-where D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     i32::deserialize(de).map(|n| n != 0)
 }
 
 fn optional_number_as_bool<'de, D>(de: D) -> Result<Option<bool>, D::Error>
-where D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     Ok(i32::deserialize(de).map(|n| Some(n != 0)).unwrap_or(None))
 }

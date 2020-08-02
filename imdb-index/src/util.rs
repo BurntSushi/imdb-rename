@@ -88,9 +88,7 @@ pub unsafe fn csv_mmap<P: AsRef<Path>>(
 /// While this read can be seeked, it will be less efficient than using a
 /// memory map. Therefore, this is useful for reading CSV data when no seeking
 /// is needed.
-pub fn csv_file<P: AsRef<Path>>(
-    path: P,
-) -> Result<csv::Reader<File>> {
+pub fn csv_file<P: AsRef<Path>>(path: P) -> Result<csv::Reader<File>> {
     let path = path.as_ref();
     let rdr = csv_reader_builder()
         .from_path(path)
@@ -135,8 +133,8 @@ pub fn fst_set_builder_file<P: AsRef<Path>>(
 /// Open an FST set file for the given file path as a memory map.
 pub unsafe fn fst_set_file<P: AsRef<Path>>(path: P) -> Result<fst::Set> {
     let path = path.as_ref();
-    let set = fst::Set::from_path(path)
-        .with_context(|_| ErrorKind::path(path))?;
+    let set =
+        fst::Set::from_path(path).with_context(|_| ErrorKind::path(path))?;
     Ok(set)
 }
 
@@ -155,7 +153,7 @@ pub fn fst_map_builder_file<P: AsRef<Path>>(
 /// Open an FST map file for the given file path as a memory map.
 pub unsafe fn fst_map_file<P: AsRef<Path>>(path: P) -> Result<fst::Map> {
     let path = path.as_ref();
-    let set = fst::Map::from_path(path)
-        .with_context(|_| ErrorKind::path(path))?;
+    let set =
+        fst::Map::from_path(path).with_context(|_| ErrorKind::path(path))?;
     Ok(set)
 }

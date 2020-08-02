@@ -211,8 +211,8 @@ impl<T> PartialOrd for Scored<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::f64::NAN;
     use super::Scored;
+    use std::f64::NAN;
 
     #[test]
     #[should_panic]

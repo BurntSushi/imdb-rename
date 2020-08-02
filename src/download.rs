@@ -98,8 +98,8 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
     rdr: R,
     wtr: W,
 ) -> Result<()> {
-    use std::io::Write;
     use bstr::{io::BufReadExt, ByteSlice};
+    use std::io::Write;
 
     // We actually only sort the raw lines here instead of parsing CSV records,
     // since parsing into CSV records has fairly substantial memory overhead.
@@ -120,12 +120,10 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
         // where there are duplicate rows.
         let first = match line.split_str("\t").next() {
             Some(first) => first,
-            None => {
-                bail!(
-                    "expected to find one tab-delimited field in '{:?}'",
-                    line.as_bstr(),
-                )
-            }
+            None => bail!(
+                "expected to find one tab-delimited field in '{:?}'",
+                line.as_bstr(),
+            ),
         };
         if i > 0 && prev == Some(first) {
             continue;

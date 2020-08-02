@@ -8,7 +8,7 @@ use fst::{self, IntoStreamer, Streamer};
 use crate::error::{Error, Result};
 use crate::index::csv_file;
 use crate::record::Episode;
-use crate::util::{IMDB_EPISODE, fst_set_builder_file, fst_set_file};
+use crate::util::{fst_set_builder_file, fst_set_file, IMDB_EPISODE};
 
 /// The name of the episode index file.
 ///
@@ -49,10 +49,7 @@ impl Index {
         // don't mutate them and no other process (should) either.
         let seasons = unsafe { fst_set_file(index_dir.join(SEASONS))? };
         let tvshows = unsafe { fst_set_file(index_dir.join(TVSHOWS))? };
-        Ok(Index {
-            seasons: seasons,
-            tvshows: tvshows,
-        })
+        Ok(Index { seasons: seasons, tvshows: tvshows })
     }
 
     /// Create an episode index from the given IMDb data directory and write
@@ -102,10 +99,8 @@ impl Index {
         upper.push(0xFF);
 
         let mut episodes = vec![];
-        let mut stream = self.seasons.range()
-            .ge(tvshow_id)
-            .le(upper)
-            .into_stream();
+        let mut stream =
+            self.seasons.range().ge(tvshow_id).le(upper).into_stream();
         while let Some(episode_bytes) = stream.next() {
             episodes.push(read_episode(episode_bytes)?);
         }
@@ -133,10 +128,8 @@ impl Index {
         upper.extend_from_slice(&u32_to_bytes(u32::MAX));
 
         let mut episodes = vec![];
-        let mut stream = self.seasons.range()
-            .ge(lower)
-            .le(upper)
-            .into_stream();
+        let mut stream =
+            self.seasons.range().ge(lower).le(upper).into_stream();
         while let Some(episode_bytes) = stream.next() {
             episodes.push(read_episode(episode_bytes)?);
         }
@@ -151,10 +144,8 @@ impl Index {
         let mut upper = episode_id.to_vec();
         upper.push(0xFF);
 
-        let mut stream = self.tvshows.range()
-            .ge(episode_id)
-            .le(upper)
-            .into_stream();
+        let mut stream =
+            self.tvshows.range().ge(episode_id).le(upper).into_stream();
         while let Some(tvshow_bytes) = stream.next() {
             return Ok(Some(read_tvshow(tvshow_bytes)?));
         }
@@ -313,9 +304,9 @@ fn u32_to_bytes(n: u32) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use crate::index::tests::TestContext;
     use super::Index;
+    use crate::index::tests::TestContext;
+    use std::collections::HashMap;
 
     #[test]
     fn basics() {
