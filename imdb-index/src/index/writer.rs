@@ -1,8 +1,6 @@
 use std::fs::File;
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
-
-use byteorder::{WriteBytesExt, LE};
 
 use crate::error::Result;
 use crate::util::create_file;
@@ -39,20 +37,17 @@ impl<W: io::Write> CursorWriter<W> {
 
     /// Write a u16LE.
     pub fn write_u16(&mut self, n: u16) -> io::Result<()> {
-        WriteBytesExt::write_u16::<LE>(self, n)?;
-        Ok(())
+        self.write_all(&n.to_le_bytes())
     }
 
     /// Write a u32LE.
     pub fn write_u32(&mut self, n: u32) -> io::Result<()> {
-        WriteBytesExt::write_u32::<LE>(self, n)?;
-        Ok(())
+        self.write_all(&n.to_le_bytes())
     }
 
     /// Write a u64LE.
     pub fn write_u64(&mut self, n: u64) -> io::Result<()> {
-        WriteBytesExt::write_u64::<LE>(self, n)?;
-        Ok(())
+        self.write_all(&n.to_le_bytes())
     }
 }
 

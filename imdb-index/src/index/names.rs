@@ -1,6 +1,6 @@
 use std::cmp;
-use std::collections::binary_heap;
-use std::collections::BinaryHeap;
+use std::collections::{binary_heap, BinaryHeap};
+use std::convert::TryInto;
 use std::fmt;
 use std::fs::File;
 use std::io::{self, Write};
@@ -8,7 +8,6 @@ use std::path::Path;
 use std::str::{self, FromStr};
 use std::time::Instant;
 
-use byteorder::{ByteOrder, LE};
 use failure::ResultExt;
 use fnv::FnvHashMap;
 use fst;
@@ -261,7 +260,9 @@ impl IndexReader {
     /// This panics if the given document id does not correspond to an indexed
     /// document.
     fn docid_to_nameid(&self, docid: DocID) -> NameID {
-        LE::read_u64(&self.idmap[8 * (docid as usize)..])
+        let start = 8 * (docid as usize);
+        let buf = self.idmap[start..start + 8].try_into().unwrap();
+        u64::from_le_bytes(buf)
     }
 
     /// Return the length, in terms, of the given document.
@@ -269,7 +270,9 @@ impl IndexReader {
     /// This panics if the given document id does not correspond to an indexed
     /// document.
     fn document_length(&self, docid: DocID) -> u64 {
-        LE::read_u16(&self.norms[2 * (docid as usize)..]) as u64
+        let start = 2 * (docid as usize);
+        let buf = self.norms[start..start + 2].try_into().unwrap();
+        u16::from_le_bytes(buf) as u64
     }
 }
 
@@ -717,7 +720,7 @@ impl Posting {
         if slice.is_empty() {
             None
         } else {
-            let v = LE::read_u32(slice);
+            let v = read_le_u32(slice);
             Some(Posting { docid: v & MAX_DOC_ID, frequency: v >> 28 })
         }
     }
@@ -754,7 +757,7 @@ impl<'i> PostingIter<'i> {
             }
         };
         postings = &postings[offset..];
-        let len = LE::read_u32(postings) as usize;
+        let len = read_le_u32(postings) as usize;
         postings = &postings[4..];
 
         let corpus_count = index.config.num_documents as f64;
@@ -1323,6 +1326,10 @@ fn normalize_query(s: &str) -> String {
     // We might consider doing Unicode normalization here, but it probably
     // doesn't matter too much on a predominantly ASCII data set.
     s.to_lowercase()
+}
+
+fn read_le_u32(slice: &[u8]) -> u32 {
+    u32::from_le_bytes(slice[..4].try_into().unwrap())
 }
 
 #[cfg(test)]
