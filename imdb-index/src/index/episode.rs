@@ -1,8 +1,8 @@
 use std::cmp;
+use std::convert::TryInto;
 use std::path::Path;
 use std::u32;
 
-use byteorder::{ByteOrder, BE};
 use fst::{self, IntoStreamer, Streamer};
 use memmap::Mmap;
 
@@ -120,13 +120,13 @@ impl Index {
     ) -> Result<Vec<Episode>> {
         let mut lower = tvshow_id.to_vec();
         lower.push(0x00);
-        lower.extend_from_slice(&u32_to_bytes(season));
-        lower.extend_from_slice(&u32_to_bytes(0));
+        lower.extend_from_slice(&season.to_be_bytes());
+        lower.extend_from_slice(&0u32.to_be_bytes());
 
         let mut upper = tvshow_id.to_vec();
         upper.push(0x00);
-        upper.extend_from_slice(&u32_to_bytes(season));
-        upper.extend_from_slice(&u32_to_bytes(u32::MAX));
+        upper.extend_from_slice(&season.to_be_bytes());
+        upper.extend_from_slice(&u32::MAX.to_be_bytes());
 
         let mut episodes = vec![];
         let mut stream =
@@ -194,10 +194,10 @@ fn read_episode(bytes: &[u8]) -> Result<Episode> {
     };
 
     let mut i = nul + 1;
-    let season = from_optional_u32(&bytes[i..]);
+    let season = from_optional_u32("season", &bytes[i..])?;
 
     i += 4;
-    let epnum = from_optional_u32(&bytes[i..]);
+    let epnum = from_optional_u32("episode number", &bytes[i..])?;
 
     i += 4;
     let id = match String::from_utf8(bytes[i..].to_vec()) {
@@ -218,8 +218,8 @@ fn write_episode(ep: &Episode, buf: &mut Vec<u8>) -> Result<()> {
     }
     buf.extend_from_slice(ep.tvshow_id.as_bytes());
     buf.push(0x00);
-    buf.extend_from_slice(&u32_to_bytes(to_optional_season(ep)?));
-    buf.extend_from_slice(&u32_to_bytes(to_optional_epnum(ep)?));
+    buf.extend_from_slice(&to_optional_season(ep)?.to_be_bytes());
+    buf.extend_from_slice(&to_optional_epnum(ep)?.to_be_bytes());
     buf.extend_from_slice(ep.id.as_bytes());
     Ok(())
 }
@@ -235,10 +235,10 @@ fn read_tvshow(bytes: &[u8]) -> Result<Episode> {
     };
 
     let mut i = nul + 1;
-    let season = from_optional_u32(&bytes[i..]);
+    let season = from_optional_u32("season", &bytes[i..])?;
 
     i += 4;
-    let epnum = from_optional_u32(&bytes[i..]);
+    let epnum = from_optional_u32("episode number", &bytes[i..])?;
 
     i += 4;
     let tvshow_id = match String::from_utf8(bytes[i..].to_vec()) {
@@ -260,17 +260,23 @@ fn write_tvshow(ep: &Episode, buf: &mut Vec<u8>) -> Result<()> {
 
     buf.extend_from_slice(ep.id.as_bytes());
     buf.push(0x00);
-    buf.extend_from_slice(&u32_to_bytes(to_optional_season(ep)?));
-    buf.extend_from_slice(&u32_to_bytes(to_optional_epnum(ep)?));
+    buf.extend_from_slice(&to_optional_season(ep)?.to_be_bytes());
+    buf.extend_from_slice(&to_optional_epnum(ep)?.to_be_bytes());
     buf.extend_from_slice(ep.tvshow_id.as_bytes());
     Ok(())
 }
 
-fn from_optional_u32(bytes: &[u8]) -> Option<u32> {
-    match BE::read_u32(bytes) {
+fn from_optional_u32(
+    label: &'static str,
+    bytes: &[u8],
+) -> Result<Option<u32>> {
+    if bytes.len() < 4 {
+        bug!("not enough bytes to read optional {}", label);
+    }
+    Ok(match u32::from_be_bytes(bytes[..4].try_into().unwrap()) {
         u32::MAX => None,
         x => Some(x),
-    }
+    })
 }
 
 fn to_optional_season(ep: &Episode) -> Result<u32> {
@@ -295,12 +301,6 @@ fn to_optional_epnum(ep: &Episode) -> Result<u32> {
             Ok(x)
         }
     }
-}
-
-fn u32_to_bytes(n: u32) -> [u8; 4] {
-    let mut buf = [0u8; 4];
-    BE::write_u32(&mut buf, n);
-    buf
 }
 
 #[cfg(test)]

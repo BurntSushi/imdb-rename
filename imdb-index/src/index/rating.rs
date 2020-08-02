@@ -1,6 +1,6 @@
+use std::convert::TryInto;
 use std::path::Path;
 
-use byteorder::{ByteOrder, BE};
 use fst::{self, IntoStreamer, Streamer};
 use memmap::Mmap;
 
@@ -93,8 +93,8 @@ fn read_rating(bytes: &[u8]) -> Result<Rating> {
     let i = nul + 1;
     Ok(Rating {
         id: id,
-        rating: BE::read_f32(&bytes[i..]),
-        votes: BE::read_u32(&bytes[i + 4..]),
+        rating: read_rating_value(&bytes[i..])?,
+        votes: read_votes_value(&bytes[i + 4..])?,
     })
 }
 
@@ -105,21 +105,31 @@ fn write_rating(rat: &Rating, buf: &mut Vec<u8>) -> Result<()> {
 
     buf.extend_from_slice(rat.id.as_bytes());
     buf.push(0x00);
-    buf.extend_from_slice(&f32_to_bytes(rat.rating));
-    buf.extend_from_slice(&u32_to_bytes(rat.votes));
+    write_rating_value(rat.rating, buf);
+    write_votes_value(rat.votes, buf);
     Ok(())
 }
 
-fn u32_to_bytes(n: u32) -> [u8; 4] {
-    let mut buf = [0u8; 4];
-    BE::write_u32(&mut buf, n);
-    buf
+fn read_votes_value(slice: &[u8]) -> Result<u32> {
+    if slice.len() < 4 {
+        bug!("not enough bytes to read votes value");
+    }
+    Ok(u32::from_be_bytes(slice[..4].try_into().unwrap()))
 }
 
-fn f32_to_bytes(n: f32) -> [u8; 4] {
-    let mut buf = [0u8; 4];
-    BE::write_f32(&mut buf, n);
-    buf
+fn write_votes_value(votes: u32, buf: &mut Vec<u8>) {
+    buf.extend_from_slice(&votes.to_be_bytes())
+}
+
+fn read_rating_value(slice: &[u8]) -> Result<f32> {
+    if slice.len() < 4 {
+        bug!("not enough bytes to read rating value");
+    }
+    Ok(f32::from_be_bytes(slice[..4].try_into().unwrap()))
+}
+
+fn write_rating_value(rating: f32, buf: &mut Vec<u8>) {
+    buf.extend_from_slice(&rating.to_be_bytes())
 }
 
 #[cfg(test)]
