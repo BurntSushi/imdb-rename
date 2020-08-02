@@ -186,7 +186,7 @@ pub struct IndexReader {
     /// terms (which are ngrams for this index) to offsets into the postings
     /// file. The offset indicates the start of a list of document ids
     /// containing that term.
-    ngram: fst::Map,
+    ngram: fst::Map<Mmap>,
     /// The postings. This corresponds to a sequence of lists, where each list
     /// is a list of document ID/frequency pairs. Each list corresponds to the
     /// document ids containing a particular term. The beginning of each list
@@ -240,13 +240,7 @@ impl IndexReader {
         let config_file = open_file(dir.join(CONFIG))?;
         let config: Config = serde_json::from_reader(config_file)
             .map_err(|e| Error::config(e.to_string()))?;
-        Ok(IndexReader {
-            config: config,
-            ngram: ngram,
-            postings: postings,
-            idmap: idmap,
-            norms: norms,
-        })
+        Ok(IndexReader { config, ngram, postings, idmap, norms })
     }
 
     /// Execute a search.

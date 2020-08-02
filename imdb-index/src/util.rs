@@ -131,10 +131,11 @@ pub fn fst_set_builder_file<P: AsRef<Path>>(
 }
 
 /// Open an FST set file for the given file path as a memory map.
-pub unsafe fn fst_set_file<P: AsRef<Path>>(path: P) -> Result<fst::Set> {
+pub unsafe fn fst_set_file<P: AsRef<Path>>(path: P) -> Result<fst::Set<Mmap>> {
     let path = path.as_ref();
-    let set =
-        fst::Set::from_path(path).with_context(|_| ErrorKind::path(path))?;
+    let file = File::open(path).with_context(|_| ErrorKind::path(path))?;
+    let mmap = Mmap::map(&file).with_context(|_| ErrorKind::path(path))?;
+    let set = fst::Set::new(mmap).with_context(|_| ErrorKind::path(path))?;
     Ok(set)
 }
 
@@ -151,9 +152,10 @@ pub fn fst_map_builder_file<P: AsRef<Path>>(
 }
 
 /// Open an FST map file for the given file path as a memory map.
-pub unsafe fn fst_map_file<P: AsRef<Path>>(path: P) -> Result<fst::Map> {
+pub unsafe fn fst_map_file<P: AsRef<Path>>(path: P) -> Result<fst::Map<Mmap>> {
     let path = path.as_ref();
-    let set =
-        fst::Map::from_path(path).with_context(|_| ErrorKind::path(path))?;
-    Ok(set)
+    let file = File::open(path).with_context(|_| ErrorKind::path(path))?;
+    let mmap = Mmap::map(&file).with_context(|_| ErrorKind::path(path))?;
+    let map = fst::Map::new(mmap).with_context(|_| ErrorKind::path(path))?;
+    Ok(map)
 }

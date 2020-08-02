@@ -4,6 +4,7 @@ use std::u32;
 
 use byteorder::{ByteOrder, BE};
 use fst::{self, IntoStreamer, Streamer};
+use memmap::Mmap;
 
 use crate::error::{Error, Result};
 use crate::index::csv_file;
@@ -37,8 +38,8 @@ const TVSHOWS: &str = "episode.tvshows.fst";
 /// quickly.
 #[derive(Debug)]
 pub struct Index {
-    seasons: fst::Set,
-    tvshows: fst::Set,
+    seasons: fst::Set<Mmap>,
+    tvshows: fst::Set<Mmap>,
 }
 
 impl Index {
@@ -49,7 +50,7 @@ impl Index {
         // don't mutate them and no other process (should) either.
         let seasons = unsafe { fst_set_file(index_dir.join(SEASONS))? };
         let tvshows = unsafe { fst_set_file(index_dir.join(TVSHOWS))? };
-        Ok(Index { seasons: seasons, tvshows: tvshows })
+        Ok(Index { seasons, tvshows })
     }
 
     /// Create an episode index from the given IMDb data directory and write

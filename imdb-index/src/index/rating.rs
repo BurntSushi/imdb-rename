@@ -2,6 +2,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, BE};
 use fst::{self, IntoStreamer, Streamer};
+use memmap::Mmap;
 
 use crate::error::{Error, Result};
 use crate::record::Rating;
@@ -22,7 +23,7 @@ const RATINGS: &str = "ratings.fst";
 /// titles efficiently.
 #[derive(Debug)]
 pub struct Index {
-    idx: fst::Set,
+    idx: fst::Set<Mmap>,
 }
 
 impl Index {
