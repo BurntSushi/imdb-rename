@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use failure::bail;
 use flate2::read::GzDecoder;
-use reqwest;
 
 use crate::Result;
 
@@ -60,9 +59,22 @@ fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
 
     let url = format!("{}/{}", IMDB_BASE_URL, dataset);
     log::info!("downloading {} to {}", url, outpath.display());
-    let mut resp = GzDecoder::new(reqwest::get(&url)?.error_for_status()?);
+    let resp = ureq::get(&url).call();
+    if let Some(err) = resp.synthetic_error() {
+        bail!("bad HTTP communication: {}", err);
+    }
+    if resp.error() {
+        bail!(
+            "bad HTTP response from server: {} {}",
+            resp.status(),
+            resp.status_text()
+        );
+    }
     log::info!("sorting CSV records");
-    write_sorted_csv_records(&mut resp, &mut outfile)?;
+    write_sorted_csv_records(
+        GzDecoder::new(resp.into_reader()),
+        &mut outfile,
+    )?;
     Ok(())
 }
 
