@@ -3,6 +3,7 @@ use std::io;
 use std::path::Path;
 
 use fst;
+use memmap::Mmap;
 
 use crate::error::{Error, Result};
 use crate::util::{fst_map_builder_file, fst_map_file};
@@ -13,7 +14,7 @@ use crate::util::{fst_map_builder_file, fst_map_file};
 /// "natural keys" to other more convenient forms, such as file offsets.
 #[derive(Debug)]
 pub struct IndexReader {
-    idx: fst::Map,
+    idx: fst::Map<Mmap>,
 }
 
 impl IndexReader {
