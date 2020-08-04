@@ -1,10 +1,7 @@
 use std::io::{self, Write};
 
-use failure::bail;
 use imdb_index::{Episode, MediaEntity, Scored, Searcher, Title};
 use tabwriter::TabWriter;
-
-use crate::Result;
 
 /// Make a choice among the search results given.
 ///
@@ -20,9 +17,9 @@ pub fn choose(
     searcher: &mut Searcher,
     results: &[Scored<MediaEntity>],
     good_threshold: f64,
-) -> Result<MediaEntity> {
+) -> anyhow::Result<MediaEntity> {
     if results.is_empty() {
-        bail!("no search results available for query");
+        anyhow::bail!("no search results available for query");
     } else if results.len() == 1 {
         return Ok(results[0].clone().into_value());
     } else if (results[0].score() - results[1].score()) >= good_threshold {
@@ -35,7 +32,7 @@ pub fn choose(
 }
 
 /// Reads a number from stdin in the given inclusive range.
-pub fn read_number(start: usize, end: usize) -> Result<usize> {
+pub fn read_number(start: usize, end: usize) -> anyhow::Result<usize> {
     let mut stdout = io::stdout();
     write!(stdout, "Please enter your choice [{}-{}]: ", start, end)?;
     stdout.flush()?;
@@ -44,7 +41,7 @@ pub fn read_number(start: usize, end: usize) -> Result<usize> {
     io::stdin().read_line(&mut response)?;
     let choice: usize = response.trim().parse()?;
     if choice < start || choice > end {
-        bail!(
+        anyhow::bail!(
             "invalid choice: {} is not in range [{}-{}]",
             choice,
             start,
@@ -57,7 +54,7 @@ pub fn read_number(start: usize, end: usize) -> Result<usize> {
 /// Reads a yes/no answer from stdin. This is flexible and recognizes
 /// y, Y, yes, YES as 'yes' answers. Everything else is recognized as a 'no'
 /// answer.
-pub fn read_yesno(msg: &str) -> Result<bool> {
+pub fn read_yesno(msg: &str) -> anyhow::Result<bool> {
     let mut stdout = io::stdout();
     write!(stdout, "{}", msg)?;
     stdout.flush()?;
@@ -77,7 +74,7 @@ pub fn write_tsv<W: io::Write>(
     wtr: W,
     searcher: &mut Searcher,
     results: &[Scored<MediaEntity>],
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut wtr = TabWriter::new(wtr).minwidth(4);
     writeln!(wtr, "#\tscore\tid\tkind\ttitle\tyear\ttv")?;
     for (i, sr) in results.iter().enumerate() {
@@ -109,7 +106,7 @@ fn write_tsv_title<W: io::Write>(
     position: usize,
     score: f64,
     ent: &MediaEntity,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     write!(
         wtr,
         "{}\t{:0.3}\t{}\t{}\t{}\t{}",
@@ -134,7 +131,7 @@ fn write_tsv_episode<W: io::Write>(
     ent: &MediaEntity,
     tvshow: &Title,
     ep: &Episode,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let tvinfo = format!(
         "S{:02}E{:02} {}",
         ep.season.unwrap_or(0),

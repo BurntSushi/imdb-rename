@@ -8,14 +8,13 @@ use std::path::Path;
 use std::str::{self, FromStr};
 use std::time::Instant;
 
-use failure::ResultExt;
 use fnv::FnvHashMap;
 use fst;
 use memmap::Mmap;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-use crate::error::{Error, ErrorKind, Result};
+use crate::error::{Error, Result};
 use crate::index::writer::CursorWriter;
 use crate::scored::{Scored, SearchResults};
 use crate::util::{
@@ -1028,11 +1027,11 @@ impl IndexWriter {
             self.ngram.insert(term.as_bytes(), pos).map_err(Error::fst)?;
             self.postings
                 .write_u32(postings.list.len() as u32)
-                .context(ErrorKind::Io)?;
+                .map_err(Error::io)?;
             for posting in postings.list {
                 let freq = cmp::min(15, posting.frequency);
                 let v = (freq << 28) | posting.docid;
-                self.postings.write_u32(v).context(ErrorKind::Io)?;
+                self.postings.write_u32(v).map_err(Error::io)?;
             }
         }
 
@@ -1047,10 +1046,10 @@ impl IndexWriter {
         )
         .map_err(|e| Error::config(e.to_string()))?;
         self.ngram.finish().map_err(Error::fst)?;
-        self.idmap.flush().context(ErrorKind::Io)?;
-        self.postings.flush().context(ErrorKind::Io)?;
-        self.norms.flush().context(ErrorKind::Io)?;
-        self.config.flush().context(ErrorKind::Io)?;
+        self.idmap.flush().map_err(Error::io)?;
+        self.postings.flush().map_err(Error::io)?;
+        self.norms.flush().map_err(Error::io)?;
+        self.config.flush().map_err(Error::io)?;
         Ok(())
     }
 
@@ -1072,7 +1071,7 @@ impl IndexWriter {
             (count as f64 - self.avg_document_len) / (self.num_docs() as f64);
         // Write the document length to disk, which is used as a normalization
         // term for some scorers (like Okapi-BM25).
-        self.norms.write_u16(count).context(ErrorKind::Io)?;
+        self.norms.write_u16(count).map_err(Error::io)?;
         Ok(())
     }
 
@@ -1092,7 +1091,7 @@ impl IndexWriter {
     /// Retrieve a fresh doc id, and associate it with the given name id.
     fn next_docid(&mut self, name_id: NameID) -> Result<DocID> {
         let docid = self.next_docid;
-        self.idmap.write_u64(name_id).context(ErrorKind::Io)?;
+        self.idmap.write_u64(name_id).map_err(Error::io)?;
         self.next_docid = match self.next_docid.checked_add(1) {
             None => bug!("exhausted doc ids"),
             Some(next_docid) => next_docid,

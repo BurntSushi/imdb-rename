@@ -5,7 +5,6 @@ use std::result;
 use std::str::FromStr;
 
 use csv;
-use failure::Fail;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -800,7 +799,9 @@ impl<T: fmt::Display + PartialEq> fmt::Display for Range<T> {
     }
 }
 
-impl<E: Fail, T: FromStr<Err = E>> FromStr for Range<T> {
+impl<E: std::error::Error + Send + Sync + 'static, T: FromStr<Err = E>> FromStr
+    for Range<T>
+{
     type Err = Error;
 
     fn from_str(range: &str) -> Result<Range<T>> {

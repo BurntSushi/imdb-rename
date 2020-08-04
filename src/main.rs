@@ -3,7 +3,6 @@ use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process;
-use std::result;
 
 use imdb_index::{Index, IndexBuilder, NgramType, Searcher};
 use lazy_static::lazy_static;
@@ -18,9 +17,6 @@ mod logger;
 mod rename;
 mod util;
 
-/// Our type alias for handling errors throughout imdb-rename.
-type Result<T> = result::Result<T, failure::Error>;
-
 fn main() {
     if let Err(err) = try_main() {
         // A pipe error occurs when the consumer of this process's output has
@@ -28,21 +24,12 @@ fn main() {
         if is_pipe_error(&err) {
             process::exit(0);
         }
-
-        // Print the error, including all of its underlying causes.
-        eprintln!("{}", pretty_error(&err));
-
-        // If we get a non-empty backtrace (e.g., RUST_BACKTRACE=1 is set),
-        // then show it.
-        let backtrace = err.backtrace().to_string();
-        if !backtrace.trim().is_empty() {
-            eprintln!("{}", backtrace);
-        }
+        eprintln!("{:?}", err);
         process::exit(1);
     }
 }
 
-fn try_main() -> Result<()> {
+fn try_main() -> anyhow::Result<()> {
     logger::init()?;
     log::set_max_level(log::LevelFilter::Info);
 
@@ -76,7 +63,7 @@ fn try_main() -> Result<()> {
     };
     if args.files.is_empty() {
         let results = match results {
-            None => failure::bail!("run with a file to rename or --query"),
+            None => anyhow::bail!("run with a file to rename or --query"),
             Some(ref results) => results,
         };
         return write_tsv(io::stdout(), &mut searcher, results.as_slice());
@@ -100,7 +87,7 @@ fn try_main() -> Result<()> {
         args.rename_action,
     )?;
     if proposals.is_empty() {
-        failure::bail!("no files to rename");
+        anyhow::bail!("no files to rename");
     }
 
     let mut stdout = TabWriter::new(io::stdout());
@@ -142,7 +129,7 @@ struct Args {
 }
 
 impl Args {
-    fn from_matches(matches: &clap::ArgMatches) -> Result<Args> {
+    fn from_matches(matches: &clap::ArgMatches) -> anyhow::Result<Args> {
         let files = collect_paths(
             matches
                 .values_of_os("file")
@@ -168,7 +155,7 @@ impl Args {
         let rename_action = {
             if matches.is_present("symlink") {
                 if !cfg!(unix) {
-                    failure::bail!(
+                    anyhow::bail!(
                         "--symlink currently supported only on Unix \
                          platforms, try hardlink (-H) instead"
                     );
@@ -205,26 +192,26 @@ impl Args {
         })
     }
 
-    fn create_index(&self) -> Result<Index> {
+    fn create_index(&self) -> anyhow::Result<Index> {
         Ok(IndexBuilder::new()
             .ngram_size(self.ngram_size)
             .ngram_type(self.ngram_type)
             .create(&self.data_dir, &self.index_dir)?)
     }
 
-    fn open_index(&self) -> Result<Index> {
+    fn open_index(&self) -> anyhow::Result<Index> {
         Ok(Index::open(&self.data_dir, &self.index_dir)?)
     }
 
-    fn searcher(&self) -> Result<Searcher> {
+    fn searcher(&self) -> anyhow::Result<Searcher> {
         Ok(Searcher::new(self.open_index()?))
     }
 
-    fn download_all(&self) -> Result<bool> {
+    fn download_all(&self) -> anyhow::Result<bool> {
         download::download_all(&self.data_dir)
     }
 
-    fn download_all_update(&self) -> Result<()> {
+    fn download_all_update(&self) -> anyhow::Result<()> {
         download::update_all(&self.data_dir)
     }
 }
@@ -369,22 +356,10 @@ fn collect_paths(paths: Vec<&OsStr>, follow: bool) -> Vec<PathBuf> {
     results
 }
 
-/// Return a prettily formatted error, including its entire causal chain.
-fn pretty_error(err: &failure::Error) -> String {
-    let mut pretty = err.to_string();
-    let mut prev = err.as_fail();
-    while let Some(next) = prev.cause() {
-        pretty.push_str(": ");
-        pretty.push_str(&next.to_string());
-        prev = next;
-    }
-    pretty
-}
-
 /// Return true if and only if an I/O broken pipe error exists in the causal
 /// chain of the given error.
-fn is_pipe_error(err: &failure::Error) -> bool {
-    for cause in err.iter_chain() {
+fn is_pipe_error(err: &anyhow::Error) -> bool {
+    for cause in err.chain() {
         if let Some(ioerr) = cause.downcast_ref::<io::Error>() {
             if ioerr.kind() == io::ErrorKind::BrokenPipe {
                 return true;

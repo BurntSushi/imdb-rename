@@ -5,7 +5,6 @@ use std::path::Path;
 use std::time;
 
 use csv;
-use failure::ResultExt;
 use fst;
 use memmap::Mmap;
 
@@ -90,9 +89,9 @@ pub unsafe fn csv_mmap<P: AsRef<Path>>(
 /// is needed.
 pub fn csv_file<P: AsRef<Path>>(path: P) -> Result<csv::Reader<File>> {
     let path = path.as_ref();
-    let rdr = csv_reader_builder()
-        .from_path(path)
-        .with_context(|_| ErrorKind::path(path))?;
+    let rdr = csv_reader_builder().from_path(path).map_err(|e| {
+        Error::new(ErrorKind::Csv(format!("{}: {}", path.display(), e)))
+    })?;
     Ok(rdr)
 }
 
@@ -100,21 +99,21 @@ pub fn csv_file<P: AsRef<Path>>(path: P) -> Result<csv::Reader<File>> {
 pub unsafe fn mmap_file<P: AsRef<Path>>(path: P) -> Result<Mmap> {
     let path = path.as_ref();
     let file = open_file(path)?;
-    let mmap = Mmap::map(&file).with_context(|_| ErrorKind::path(path))?;
+    let mmap = Mmap::map(&file).map_err(|e| Error::io_path(e, path))?;
     Ok(mmap)
 }
 
 /// Creates a file and truncates it.
 pub fn create_file<P: AsRef<Path>>(path: P) -> Result<File> {
     let path = path.as_ref();
-    let file = File::create(path).with_context(|_| ErrorKind::path(path))?;
+    let file = File::create(path).map_err(|e| Error::io_path(e, path))?;
     Ok(file)
 }
 
 /// Opens a file for reading.
 pub fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
     let path = path.as_ref();
-    let file = File::open(path).with_context(|_| ErrorKind::path(path))?;
+    let file = File::open(path).map_err(|e| Error::io_path(e, path))?;
     Ok(file)
 }
 
@@ -124,18 +123,20 @@ pub fn fst_set_builder_file<P: AsRef<Path>>(
 ) -> Result<fst::SetBuilder<io::BufWriter<File>>> {
     let path = path.as_ref();
     let wtr = io::BufWriter::new(create_file(path)?);
-    let builder = fst::SetBuilder::new(wtr)
-        .map_err(Error::fst)
-        .with_context(|_| ErrorKind::path(path))?;
+    let builder = fst::SetBuilder::new(wtr).map_err(|e| {
+        Error::new(ErrorKind::Fst(format!("{}: {}", path.display(), e)))
+    })?;
     Ok(builder)
 }
 
 /// Open an FST set file for the given file path as a memory map.
 pub unsafe fn fst_set_file<P: AsRef<Path>>(path: P) -> Result<fst::Set<Mmap>> {
     let path = path.as_ref();
-    let file = File::open(path).with_context(|_| ErrorKind::path(path))?;
-    let mmap = Mmap::map(&file).with_context(|_| ErrorKind::path(path))?;
-    let set = fst::Set::new(mmap).with_context(|_| ErrorKind::path(path))?;
+    let file = File::open(path).map_err(|e| Error::io_path(e, path))?;
+    let mmap = Mmap::map(&file).map_err(|e| Error::io_path(e, path))?;
+    let set = fst::Set::new(mmap).map_err(|e| {
+        Error::new(ErrorKind::Fst(format!("{}: {}", path.display(), e)))
+    })?;
     Ok(set)
 }
 
@@ -145,17 +146,19 @@ pub fn fst_map_builder_file<P: AsRef<Path>>(
 ) -> Result<fst::MapBuilder<io::BufWriter<File>>> {
     let path = path.as_ref();
     let wtr = io::BufWriter::new(create_file(path)?);
-    let builder = fst::MapBuilder::new(wtr)
-        .map_err(Error::fst)
-        .with_context(|_| ErrorKind::path(path))?;
+    let builder = fst::MapBuilder::new(wtr).map_err(|e| {
+        Error::new(ErrorKind::Fst(format!("{}: {}", path.display(), e)))
+    })?;
     Ok(builder)
 }
 
 /// Open an FST map file for the given file path as a memory map.
 pub unsafe fn fst_map_file<P: AsRef<Path>>(path: P) -> Result<fst::Map<Mmap>> {
     let path = path.as_ref();
-    let file = File::open(path).with_context(|_| ErrorKind::path(path))?;
-    let mmap = Mmap::map(&file).with_context(|_| ErrorKind::path(path))?;
-    let map = fst::Map::new(mmap).with_context(|_| ErrorKind::path(path))?;
+    let file = File::open(path).map_err(|e| Error::io_path(e, path))?;
+    let mmap = Mmap::map(&file).map_err(|e| Error::io_path(e, path))?;
+    let map = fst::Map::new(mmap).map_err(|e| {
+        Error::new(ErrorKind::Fst(format!("{}: {}", path.display(), e)))
+    })?;
     Ok(map)
 }

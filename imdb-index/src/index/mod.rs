@@ -5,12 +5,11 @@ use std::thread;
 use std::time::Instant;
 
 use csv;
-use failure::ResultExt;
 use memmap::Mmap;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-use crate::error::{Error, ErrorKind, Result};
+use crate::error::{Error, Result};
 use crate::record::{Episode, Rating, Title, TitleKind};
 use crate::scored::SearchResults;
 use crate::util::{
@@ -429,7 +428,7 @@ impl IndexBuilder {
         let data_dir = data_dir.as_ref();
         let index_dir = index_dir.as_ref();
         fs::create_dir_all(index_dir)
-            .with_context(|_| ErrorKind::path(index_dir))?;
+            .map_err(|e| Error::io_path(e, index_dir))?;
         log::info!("creating index at {}", index_dir.display());
 
         // Creating the rating and episode indices are completely independent

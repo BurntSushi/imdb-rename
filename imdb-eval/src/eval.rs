@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use std::vec;
 
-use failure::bail;
 use imdb_index::{
     Index, IndexBuilder, MediaEntity, NameScorer, NgramType, Query, Searcher,
     Similarity,
@@ -14,8 +13,6 @@ use imdb_index::{
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use toml;
-
-use crate::Result;
 
 /// The default truth data used in an evaluation. It's small enough that we
 /// embed it directly into the binary.
@@ -46,7 +43,7 @@ struct Task {
 
 impl Truth {
     /// Load truth data from the given TOML file.
-    fn from_path<P: AsRef<Path>>(path: P) -> Result<Truth> {
+    fn from_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Truth> {
         let path = path.as_ref();
 
         let mut contents = String::new();
@@ -96,9 +93,12 @@ impl Spec {
     /// Set the result size for this specification.
     ///
     /// This returns an error if the given size is less than `1`.
-    pub fn with_result_size(mut self, result_size: usize) -> Result<Spec> {
+    pub fn with_result_size(
+        mut self,
+        result_size: usize,
+    ) -> anyhow::Result<Spec> {
         if result_size < 1 {
-            bail!(
+            anyhow::bail!(
                 "result size {} is invalid, must be greater than 0",
                 result_size
             );
@@ -110,9 +110,12 @@ impl Spec {
     /// Set the ngram size for this specification.
     ///
     /// This returns an error if the given size is less than `2`.
-    pub fn with_ngram_size(mut self, ngram_size: usize) -> Result<Spec> {
+    pub fn with_ngram_size(
+        mut self,
+        ngram_size: usize,
+    ) -> anyhow::Result<Spec> {
         if ngram_size < 2 {
-            bail!(
+            anyhow::bail!(
                 "ngram size {} is invalid, must be greater than 1",
                 ngram_size,
             );
@@ -148,7 +151,7 @@ impl Spec {
         &self,
         data_dir: P1,
         eval_dir: P2,
-    ) -> Result<Evaluation> {
+    ) -> anyhow::Result<Evaluation> {
         let searcher = Searcher::new(self.index(data_dir, eval_dir)?);
         Ok(Evaluation {
             evaluator: Evaluator { spec: self, searcher: searcher },
@@ -163,7 +166,7 @@ impl Spec {
         data_dir: P1,
         eval_dir: P2,
         truth_path: P3,
-    ) -> Result<Evaluation> {
+    ) -> anyhow::Result<Evaluation> {
         let searcher = Searcher::new(self.index(data_dir, eval_dir)?);
         Ok(Evaluation {
             evaluator: Evaluator { spec: self, searcher: searcher },
@@ -189,7 +192,7 @@ impl Spec {
         &self,
         data_dir: P1,
         eval_dir: P2,
-    ) -> Result<Index> {
+    ) -> anyhow::Result<Index> {
         let index_dir = self.index_dir(eval_dir.as_ref());
         Ok(if index_dir.exists() {
             Index::open(data_dir, index_dir)?
@@ -355,9 +358,9 @@ pub struct Evaluation<'s> {
 }
 
 impl<'s> Iterator for Evaluation<'s> {
-    type Item = Result<TaskResult>;
+    type Item = anyhow::Result<TaskResult>;
 
-    fn next(&mut self) -> Option<Result<TaskResult>> {
+    fn next(&mut self) -> Option<anyhow::Result<TaskResult>> {
         self.tasks.next().map(|task| self.evaluator.run(&task))
     }
 }
@@ -376,7 +379,7 @@ struct Evaluator<'s> {
 impl<'s> Evaluator<'s> {
     /// Run this evaluator on a single information need and return the
     /// evaluation.
-    fn run(&mut self, task: &Task) -> Result<TaskResult> {
+    fn run(&mut self, task: &Task) -> anyhow::Result<TaskResult> {
         let start = Instant::now();
         let rank = self.rank(task)?;
         let duration = Instant::now().duration_since(start);
@@ -435,7 +438,7 @@ impl<'s> Evaluator<'s> {
     ///
     /// There are other strategies, but in general, we want to reward high
     /// precision rankers.
-    fn rank(&mut self, task: &Task) -> Result<Option<u64>> {
+    fn rank(&mut self, task: &Task) -> anyhow::Result<Option<u64>> {
         let results = self.searcher.search(&self.spec.query(&task))?;
 
         let mut rank = results.len() as u64;
