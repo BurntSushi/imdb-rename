@@ -2,10 +2,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use failure::bail;
 use flate2::read::GzDecoder;
-
-use crate::Result;
 
 /// The base URL to the IMDb data set.
 ///
@@ -28,7 +25,7 @@ const DATA_SETS: &'static [&'static str] = &[
 /// is fetched from IMDb. Other paths are left untouched.
 ///
 /// Returns true if and only if at least one file was downloaded.
-pub fn download_all<P: AsRef<Path>>(dir: P) -> Result<bool> {
+pub fn download_all<P: AsRef<Path>>(dir: P) -> anyhow::Result<bool> {
     let dir = dir.as_ref();
     fs::create_dir_all(dir)?;
 
@@ -41,7 +38,7 @@ pub fn download_all<P: AsRef<Path>>(dir: P) -> Result<bool> {
 
 /// Update will update all data set files, regardless of whether they already
 /// exist or not.
-pub fn update_all<P: AsRef<Path>>(dir: P) -> Result<()> {
+pub fn update_all<P: AsRef<Path>>(dir: P) -> anyhow::Result<()> {
     let dir = dir.as_ref();
     fs::create_dir_all(dir)?;
 
@@ -53,7 +50,7 @@ pub fn update_all<P: AsRef<Path>>(dir: P) -> Result<()> {
 
 /// Downloads a single data set, decompresses it and writes it to the
 /// corresponding file path in the given directory.
-fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
+fn download_one(outdir: &Path, dataset: &'static str) -> anyhow::Result<()> {
     let outpath = dataset_path(outdir, dataset);
     let mut outfile = File::create(&outpath)?;
 
@@ -61,10 +58,10 @@ fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
     log::info!("downloading {} to {}", url, outpath.display());
     let resp = ureq::get(&url).call();
     if let Some(err) = resp.synthetic_error() {
-        bail!("bad HTTP communication: {}", err);
+        anyhow::bail!("bad HTTP communication: {}", err);
     }
     if resp.error() {
-        bail!(
+        anyhow::bail!(
             "bad HTTP response from server: {} {}",
             resp.status(),
             resp.status_text()
@@ -80,7 +77,7 @@ fn download_one(outdir: &Path, dataset: &'static str) -> Result<()> {
 
 /// Gets a list of data sets that either don't exist in the current directory
 /// or have zero size.
-fn non_existent_data_sets(dir: &Path) -> Result<Vec<&'static str>> {
+fn non_existent_data_sets(dir: &Path) -> anyhow::Result<Vec<&'static str>> {
     let mut result = vec![];
     for &dataset in DATA_SETS {
         let path = dataset_path(dir, dataset);
@@ -109,7 +106,7 @@ fn dataset_path(dir: &Path, name: &'static str) -> PathBuf {
 fn write_sorted_csv_records<R: io::Read, W: io::Write>(
     rdr: R,
     wtr: W,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     use bstr::{io::BufReadExt, ByteSlice};
     use std::io::Write;
 
@@ -120,7 +117,7 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
     let rdr = io::BufReader::new(rdr);
     let mut lines = rdr.byte_lines().collect::<io::Result<Vec<_>>>()?;
     if lines.is_empty() {
-        bail!("got empty CSV input");
+        anyhow::bail!("got empty CSV input");
     }
     // Keep the header record first.
     lines[1..].sort_unstable();
@@ -132,7 +129,7 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
         // where there are duplicate rows.
         let first = match line.split_str("\t").next() {
             Some(first) => first,
-            None => bail!(
+            None => anyhow::bail!(
                 "expected to find one tab-delimited field in '{:?}'",
                 line.as_bstr(),
             ),

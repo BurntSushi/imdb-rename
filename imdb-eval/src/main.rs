@@ -5,7 +5,6 @@ use std::process;
 use std::result;
 use std::str::FromStr;
 
-use failure::bail;
 use imdb_index::{NameScorer, NgramType, Similarity};
 use lazy_static::lazy_static;
 
@@ -14,9 +13,6 @@ use crate::eval::Spec;
 mod eval;
 mod logger;
 
-/// Our type alias for handling errors throughout imdb-eval.
-type Result<T> = result::Result<T, failure::Error>;
-
 fn main() {
     if let Err(err) = try_main() {
         // A pipe error occurs when the consumer of this process's output has
@@ -24,21 +20,12 @@ fn main() {
         if is_pipe_error(&err) {
             process::exit(0);
         }
-
-        // Print the error, including all of its underlying causes.
-        eprintln!("{}", pretty_error(&err));
-
-        // If we get a non-empty backtrace (e.g., RUST_BACKTRACE=1 is set),
-        // then show it.
-        let backtrace = err.backtrace().to_string();
-        if !backtrace.trim().is_empty() {
-            eprintln!("{}", backtrace);
-        }
+        eprintln!("{:?}", err);
         process::exit(1);
     }
 }
 
-fn try_main() -> Result<()> {
+fn try_main() -> anyhow::Result<()> {
     logger::init()?;
     log::set_max_level(log::LevelFilter::Info);
 
@@ -76,11 +63,11 @@ fn run_eval(
     eval_dir: &Path,
     truth_path: Option<&Path>,
     specs: Vec<Spec>,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     if !data_dir.exists() {
-        bail!(
+        anyhow::bail!(
             "data directory {} does not exist; please use \
-               imdb-rename to create it",
+             imdb-rename to create it",
             data_dir.display()
         );
     }
@@ -100,7 +87,7 @@ fn run_eval(
 }
 
 /// Summarize the evaluation results at the given path.
-fn run_summarize(summarize: &Path) -> Result<()> {
+fn run_summarize(summarize: &Path) -> anyhow::Result<()> {
     let mut results: Vec<eval::TaskResult> = vec![];
     let mut rdr = csv::Reader::from_path(summarize)?;
     for result in rdr.deserialize() {
@@ -133,7 +120,7 @@ struct Args {
 
 impl Args {
     /// Build a structured set of arguments from clap's matches.
-    fn from_matches(matches: &clap::ArgMatches) -> Result<Args> {
+    fn from_matches(matches: &clap::ArgMatches) -> anyhow::Result<Args> {
         let data_dir =
             matches.value_of_os("data-dir").map(PathBuf::from).unwrap();
         let eval_dir =
@@ -185,7 +172,7 @@ impl Args {
 
     /// Build all evaluation specifications as indicated by command line
     /// options.
-    fn specs(&self) -> Result<Vec<Spec>> {
+    fn specs(&self) -> anyhow::Result<Vec<Spec>> {
         // We want to build all possible permutations. We do this by
         // alternating between specs1 and specs2. Each additional parameter
         // combinatorially explodes the previous set of specifications.
@@ -345,11 +332,14 @@ impl From<NameScorer> for OptionalNameScorer {
 }
 
 /// Parse a sequence of values from clap.
-fn parse_many_lossy<E: failure::Fail, T: FromStr<Err = E>>(
+fn parse_many_lossy<
+    E: std::error::Error + Send + Sync + 'static,
+    T: FromStr<Err = E>,
+>(
     matches: &clap::ArgMatches,
     name: &str,
     default: Vec<T>,
-) -> Result<Vec<T>> {
+) -> anyhow::Result<Vec<T>> {
     let strs = match matches.values_of_lossy(name) {
         None => return Ok(default),
         Some(strs) => strs,
@@ -361,22 +351,10 @@ fn parse_many_lossy<E: failure::Fail, T: FromStr<Err = E>>(
     Ok(values)
 }
 
-/// Return a prettily formatted error, including its entire causal chain.
-fn pretty_error(err: &failure::Error) -> String {
-    let mut pretty = err.to_string();
-    let mut prev = err.as_fail();
-    while let Some(next) = prev.cause() {
-        pretty.push_str(": ");
-        pretty.push_str(&next.to_string());
-        prev = next;
-    }
-    pretty
-}
-
 /// Return true if and only if an I/O broken pipe error exists in the causal
 /// chain of the given error.
-fn is_pipe_error(err: &failure::Error) -> bool {
-    for cause in err.iter_chain() {
+fn is_pipe_error(err: &anyhow::Error) -> bool {
+    for cause in err.chain() {
         if let Some(ioerr) = cause.downcast_ref::<io::Error>() {
             if ioerr.kind() == io::ErrorKind::BrokenPipe {
                 return true;

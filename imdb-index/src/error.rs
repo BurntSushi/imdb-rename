@@ -1,92 +1,115 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::result;
 
 use csv;
-use failure::{Backtrace, Context, Fail};
 use fst;
 
 /// A type alias for handling errors throughout imdb-index.
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// An error that can occur while interacting with an IMDb index.
 #[derive(Debug)]
 pub struct Error {
-    ctx: Context<ErrorKind>,
+    kind: ErrorKind,
 }
 
 impl Error {
-    /// Return the kind of this error.
+    /// Return a reference to the kind of this error.
     pub fn kind(&self) -> &ErrorKind {
-        self.ctx.get_context()
+        &self.kind
+    }
+
+    /// Transfer ownership of the kind of this error.
+    pub fn into_kind(self) -> ErrorKind {
+        self.kind
+    }
+
+    pub(crate) fn new(kind: ErrorKind) -> Error {
+        Error { kind }
     }
 
     pub(crate) fn unknown_title<T: AsRef<str>>(unk: T) -> Error {
-        Error::from(ErrorKind::UnknownTitle(unk.as_ref().to_string()))
+        Error { kind: ErrorKind::UnknownTitle(unk.as_ref().to_string()) }
     }
 
     pub(crate) fn unknown_scorer<T: AsRef<str>>(unk: T) -> Error {
-        Error::from(ErrorKind::UnknownScorer(unk.as_ref().to_string()))
+        Error { kind: ErrorKind::UnknownScorer(unk.as_ref().to_string()) }
     }
 
     pub(crate) fn unknown_ngram_type<T: AsRef<str>>(unk: T) -> Error {
-        Error::from(ErrorKind::UnknownNgramType(unk.as_ref().to_string()))
+        Error { kind: ErrorKind::UnknownNgramType(unk.as_ref().to_string()) }
     }
 
     pub(crate) fn unknown_sim<T: AsRef<str>>(unk: T) -> Error {
-        Error::from(ErrorKind::UnknownSimilarity(unk.as_ref().to_string()))
+        Error { kind: ErrorKind::UnknownSimilarity(unk.as_ref().to_string()) }
     }
 
     pub(crate) fn unknown_directive<T: AsRef<str>>(unk: T) -> Error {
-        Error::from(ErrorKind::UnknownDirective(unk.as_ref().to_string()))
+        Error { kind: ErrorKind::UnknownDirective(unk.as_ref().to_string()) }
     }
 
     pub(crate) fn bug<T: AsRef<str>>(msg: T) -> Error {
-        Error::from(ErrorKind::Bug(msg.as_ref().to_string()))
+        Error { kind: ErrorKind::Bug(msg.as_ref().to_string()) }
     }
 
     pub(crate) fn config<T: AsRef<str>>(msg: T) -> Error {
-        Error::from(ErrorKind::Config(msg.as_ref().to_string()))
+        Error { kind: ErrorKind::Config(msg.as_ref().to_string()) }
     }
 
     pub(crate) fn version(expected: u64, got: u64) -> Error {
-        Error::from(ErrorKind::VersionMismatch { expected, got })
+        Error { kind: ErrorKind::VersionMismatch { expected, got } }
     }
 
     pub(crate) fn csv(err: csv::Error) -> Error {
-        Error::from(ErrorKind::Csv(err.to_string()))
+        Error { kind: ErrorKind::Csv(err.to_string()) }
     }
 
     pub(crate) fn fst(err: fst::Error) -> Error {
-        Error::from(ErrorKind::Fst(err.to_string()))
+        Error { kind: ErrorKind::Fst(err.to_string()) }
     }
 
-    pub(crate) fn number<E: Fail>(err: E) -> Error {
-        Error::from(err.context(ErrorKind::Number))
+    pub(crate) fn io(err: std::io::Error) -> Error {
+        Error { kind: ErrorKind::Io { err, path: None } }
+    }
+
+    pub(crate) fn io_path<P: AsRef<Path>>(
+        err: std::io::Error,
+        path: P,
+    ) -> Error {
+        Error {
+            kind: ErrorKind::Io {
+                err,
+                path: Some(path.as_ref().to_path_buf()),
+            },
+        }
+    }
+
+    pub(crate) fn number<E: std::error::Error + Send + Sync + 'static>(
+        err: E,
+    ) -> Error {
+        Error { kind: ErrorKind::Number(Box::new(err)) }
     }
 }
 
-impl Fail for Error {
-    fn cause(&self) -> Option<&dyn Fail> {
-        self.ctx.cause()
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.ctx.backtrace()
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self.kind {
+            ErrorKind::Io { ref err, .. } => Some(err),
+            ErrorKind::Number(ref err) => Some(&**err),
+            _ => None,
+        }
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.ctx.fmt(f)
+        self.kind.fmt(f)
     }
 }
 
 /// The specific kind of error that can occur.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum ErrorKind {
-    /// An error that occurred while working with a file path.
-    Path(PathBuf),
     /// An index version mismatch. This error occurs when the version of the
     /// index is different from the version supported by this version of
     /// imdb-index.
@@ -130,9 +153,15 @@ pub enum ErrorKind {
     /// An error that occured while creating an FST index.
     Fst(String),
     /// An unexpected I/O error occurred.
-    Io,
+    Io {
+        /// The underlying I/O error.
+        err: std::io::Error,
+        /// A file path, if the I/O error occurred in the context of a named
+        /// file.
+        path: Option<PathBuf>,
+    },
     /// An error occurred while parsing a number in a free-form query.
-    Number,
+    Number(Box<dyn std::error::Error + Send + Sync>),
     /// Hints that destructuring should not be exhaustive.
     ///
     /// This enum may grow additional variants, so this makes sure clients
@@ -142,17 +171,9 @@ pub enum ErrorKind {
     __Nonexhaustive,
 }
 
-impl ErrorKind {
-    /// A convenience routine for creating an error associated with a path.
-    pub(crate) fn path<P: AsRef<Path>>(path: P) -> ErrorKind {
-        ErrorKind::Path(path.as_ref().to_path_buf())
-    }
-}
-
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ErrorKind::Path(ref path) => write!(f, "{}", path.display()),
             ErrorKind::VersionMismatch { expected, got } => write!(
                 f,
                 "index version mismatch: expected version {} \
@@ -182,21 +203,12 @@ impl fmt::Display for ErrorKind {
             ErrorKind::Config(ref msg) => write!(f, "config error: {}", msg),
             ErrorKind::Csv(ref msg) => write!(f, "{}", msg),
             ErrorKind::Fst(ref msg) => write!(f, "fst error: {}", msg),
-            ErrorKind::Io => write!(f, "I/O error"),
-            ErrorKind::Number => write!(f, "error parsing number"),
+            ErrorKind::Io { path: None, .. } => write!(f, "I/O error"),
+            ErrorKind::Io { path: Some(ref p), .. } => {
+                write!(f, "{}", p.display())
+            }
+            ErrorKind::Number(_) => write!(f, "error parsing number"),
             ErrorKind::__Nonexhaustive => panic!("invalid error"),
         }
-    }
-}
-
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Error {
-        Error::from(Context::new(kind))
-    }
-}
-
-impl From<Context<ErrorKind>> for Error {
-    fn from(ctx: Context<ErrorKind>) -> Error {
-        Error { ctx }
     }
 }

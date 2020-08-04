@@ -3,14 +3,10 @@
 // print to stderr. We therefore avoid bringing in extra dependencies just
 // for this functionality.
 
-use std::result;
-
 use log::{self, Log};
 
-use crate::Result;
-
 /// Initialize a simple logger.
-pub fn init() -> Result<()> {
+pub fn init() -> anyhow::Result<()> {
     Ok(Logger::init()?)
 }
 
@@ -27,7 +23,7 @@ impl Logger {
     /// Create a new logger that logs to stderr and initialize it as the
     /// global logger. If there was a problem setting the logger, then an
     /// error is returned.
-    fn init() -> result::Result<(), log::SetLoggerError> {
+    fn init() -> std::result::Result<(), log::SetLoggerError> {
         log::set_logger(LOGGER)
     }
 }

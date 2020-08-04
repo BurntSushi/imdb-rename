@@ -4,13 +4,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use failure::{bail, format_err};
 use imdb_index::{MediaEntity, Query, SearchResults, Searcher, TitleKind};
 use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::util::choose;
-use crate::Result;
 
 /// A proposal to rename a `src` file path to a `dst` file path.
 #[derive(Clone, Debug)]
@@ -74,11 +72,11 @@ impl RenameProposal {
     }
 
     /// Execute this proposal according to `RenameAction`.
-    pub fn rename(&self) -> Result<()> {
+    pub fn rename(&self) -> anyhow::Result<()> {
         match self.action {
             RenameAction::Rename => {
                 fs::rename(&self.src, &self.dst).map_err(|e| {
-                    format_err!(
+                    anyhow::anyhow!(
                         "error renaming '{}' to '{}': {}",
                         self.src.display(),
                         self.dst.display(),
@@ -88,14 +86,14 @@ impl RenameProposal {
             }
             #[cfg(not(unix))]
             RenameAction::Symlink => {
-                bail!("symlinks are only supported for Unix")
+                anyhow::bail!("symlinks are only supported for Unix")
             }
             #[cfg(unix)]
             RenameAction::Symlink => {
                 use std::os::unix;
 
                 unix::fs::symlink(&self.src, &self.dst).map_err(|e| {
-                    format_err!(
+                    anyhow::anyhow!(
                         "error symlinking '{}' to '{}': {}",
                         self.src.display(),
                         self.dst.display(),
@@ -105,7 +103,7 @@ impl RenameProposal {
             }
             RenameAction::Hardlink => {
                 fs::hard_link(&self.src, &self.dst).map_err(|e| {
-                    format_err!(
+                    anyhow::anyhow!(
                         "error hardlinking '{}' to '{}': {}",
                         self.src.display(),
                         self.dst.display(),
@@ -180,7 +178,7 @@ impl Renamer {
         paths: &[PathBuf],
         dest: Option<PathBuf>,
         action: RenameAction,
-    ) -> Result<Vec<RenameProposal>> {
+    ) -> anyhow::Result<Vec<RenameProposal>> {
         let mut proposals = vec![];
         for path in paths {
             let result =
@@ -205,11 +203,17 @@ impl Renamer {
         let mut any_dir = false;
         for p in &proposals {
             if seen.contains(&p.dst) {
-                bail!("duplicate rename proposal for '{}'", p.dst.display());
+                anyhow::bail!(
+                    "duplicate rename proposal for '{}'",
+                    p.dst.display()
+                );
             }
             seen.insert(p.dst.clone());
             if p.dst.exists() {
-                bail!("file path '{}' already exists", p.dst.display());
+                anyhow::bail!(
+                    "file path '{}' already exists",
+                    p.dst.display()
+                );
             }
             any_dir = any_dir || p.src.is_dir();
         }
@@ -319,7 +323,7 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         candidate: &CandidateAny,
-    ) -> Result<MediaEntity> {
+    ) -> anyhow::Result<MediaEntity> {
         // If we already have an entity override, then just use that to build
         // the proposal and skip any automatic searches.
         if let Some(ref ent) = self.force {
@@ -358,7 +362,7 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         candidate: &CandidateEpisode,
-    ) -> Result<MediaEntity> {
+    ) -> anyhow::Result<MediaEntity> {
         let tvshow = self.find_tvshow_for_episode(searcher, candidate)?;
         let eps =
             searcher.index().episodes(&tvshow.title().id, candidate.season)?;
@@ -367,7 +371,7 @@ impl Renamer {
             .find(|ep| ep.episode == Some(candidate.episode))
         {
             Some(ep) => ep,
-            None => bail!(
+            None => anyhow::bail!(
                 "could not find S{:02}E{:02} for TV show {}",
                 candidate.season,
                 candidate.episode,
@@ -376,7 +380,10 @@ impl Renamer {
         };
         match searcher.index().entity(&ep.id)? {
             Some(ent) => Ok(ent),
-            None => bail!("could not find media entity for episode {}", ep.id),
+            None => anyhow::bail!(
+                "could not find media entity for episode {}",
+                ep.id
+            ),
         }
     }
 
@@ -390,12 +397,12 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         candidate: &CandidateEpisode,
-    ) -> Result<MediaEntity> {
+    ) -> anyhow::Result<MediaEntity> {
         // If we already have an entity override, then just use that as the
         // TV show. If it isn't a TV show, then return an error.
         if let Some(ref ent) = self.force {
             if !ent.title().kind.is_tv_series() {
-                bail!(
+                anyhow::bail!(
                     "expected TV show to rename episode, but found {}",
                     ent.title().kind
                 );
@@ -424,11 +431,11 @@ impl Renamer {
     /// This is useful for renaming files like 'English.srt', where the path
     /// doesn't contain any useful information and an override is necessary
     /// anyway.
-    fn find_unknown(&self) -> Result<MediaEntity> {
+    fn find_unknown(&self) -> anyhow::Result<MediaEntity> {
         match self.force {
             Some(ref ent) => Ok(ent.clone()),
             None => {
-                bail!(
+                anyhow::bail!(
                     "could not parse file path and there is no override \
                        set via -q/--query"
                 );
@@ -443,7 +450,7 @@ impl Renamer {
     /// represents. Principally, this consists of three categories: TV episode,
     /// any named title with a year, and then everything else. The type of
     /// candidate we have determines how we guess its canonical entry in IMDb.
-    fn candidate(&self, path: &Path) -> Result<Candidate> {
+    fn candidate(&self, path: &Path) -> anyhow::Result<Candidate> {
         let cpath = CandidatePath::from_path(path)?;
         let name = cpath.base_name.clone();
 
@@ -464,7 +471,7 @@ impl Renamer {
             Some(caps) => caps,
         };
         let mat_year = match caps_year.name("year") {
-            None => bail!("missing 'year' group in: {}", self.year),
+            None => anyhow::bail!("missing 'year' group in: {}", self.year),
             Some(mat) => mat,
         };
         let year = mat_year.as_str().parse()?;
@@ -483,7 +490,7 @@ impl Renamer {
     fn episode_parts(
         &self,
         cpath: &CandidatePath,
-    ) -> Result<Option<CandidateEpisode>> {
+    ) -> anyhow::Result<Option<CandidateEpisode>> {
         let name = &cpath.base_name;
         let caps_season = match self.season.captures(name) {
             None => return Ok(None),
@@ -494,11 +501,15 @@ impl Renamer {
             Some(caps) => caps,
         };
         let mat_season = match caps_season.name("season") {
-            None => bail!("missing 'season' group in: {}", self.season),
+            None => {
+                anyhow::bail!("missing 'season' group in: {}", self.season)
+            }
             Some(mat) => mat,
         };
         let mat_episode = match caps_episode.name("episode") {
-            None => bail!("missing 'episode' group in: {}", self.episode),
+            None => {
+                anyhow::bail!("missing 'episode' group in: {}", self.episode)
+            }
             Some(mat) => mat,
         };
 
@@ -529,7 +540,7 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         query: &Query,
-    ) -> Result<MediaEntity> {
+    ) -> anyhow::Result<MediaEntity> {
         let mut choose_cache = self.choose_cache.lock().unwrap();
         if let Some(ent) = choose_cache.get(query) {
             return Ok(ent.clone());
@@ -548,7 +559,7 @@ impl Renamer {
         &self,
         searcher: &mut Searcher,
         query: &Query,
-    ) -> Result<SearchResults<MediaEntity>> {
+    ) -> anyhow::Result<SearchResults<MediaEntity>> {
         let mut cache = self.cache.lock().unwrap();
         if let Some(results) = cache.get(query) {
             return Ok(results.clone());
@@ -642,17 +653,23 @@ struct CandidateEpisode {
 impl CandidatePath {
     /// Build a candidate path from a source file path. If a path could not
     /// be built, then an error is returned.
-    fn from_path(path: &Path) -> Result<CandidatePath> {
+    fn from_path(path: &Path) -> anyhow::Result<CandidatePath> {
         let parent = match path.parent() {
-            None => bail!("{}: has no parent, cannot rename", path.display()),
+            None => anyhow::bail!(
+                "{}: has no parent, cannot rename",
+                path.display()
+            ),
             Some(parent) => parent.to_path_buf(),
         };
         let name_os = match path.file_name() {
-            None => bail!("{}: missing file name", path.display()),
+            None => anyhow::bail!("{}: missing file name", path.display()),
             Some(name_os) => name_os,
         };
         let name = match name_os.to_str() {
-            None => bail!("{}: invalid UTF-8, cannot rename", path.display()),
+            None => anyhow::bail!(
+                "{}: invalid UTF-8, cannot rename",
+                path.display()
+            ),
             Some(name) => name,
         };
         let (base_name, ext) = if path.is_dir() {
@@ -716,7 +733,7 @@ impl RenamerBuilder {
     }
 
     /// Build a `Renamer` from the current configuration.
-    pub fn build(&self) -> Result<Renamer> {
+    pub fn build(&self) -> anyhow::Result<Renamer> {
         Ok(Renamer {
             cache: Mutex::new(HashMap::new()),
             choose_cache: Mutex::new(HashMap::new()),
