@@ -1,6 +1,6 @@
 use std::cmp;
-use std::collections::BinaryHeap;
 use std::collections::binary_heap;
+use std::collections::BinaryHeap;
 use std::fmt;
 use std::fs::File;
 use std::io::{self, Write};
@@ -11,17 +11,13 @@ use std::time::Instant;
 use byteorder::{ByteOrder, LE};
 use failure::ResultExt;
 use fnv::FnvHashMap;
-use fst;
 use memmap::Mmap;
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 use crate::error::{Error, ErrorKind, Result};
 use crate::index::writer::CursorWriter;
 use crate::scored::{Scored, SearchResults};
-use crate::util::{
-    NiceDuration, fst_map_builder_file, fst_map_file, mmap_file, open_file,
-};
+use crate::util::{fst_map_builder_file, fst_map_file, mmap_file, open_file, NiceDuration};
 
 /// The name of the file containing the index configuration.
 ///
@@ -119,7 +115,7 @@ type DocID = u32;
 /// a single u32. We give 4 bits for frequency and 28 bits for docid. That
 /// means we can permit up to 268,435,455 = (1<<28)-1 names, which is plenty
 /// for all unique names in IMDb.
-const MAX_DOC_ID: DocID = (1<<28) - 1;
+const MAX_DOC_ID: DocID = (1 << 28) - 1;
 
 /// A query for searching the name index.
 ///
@@ -172,7 +168,10 @@ impl NameQuery {
     /// matches a result yielded by the low frequency query. Otherwise, results
     /// from the high frequency query aren't considered.
     pub fn with_stop_word_ratio(self, ratio: f64) -> NameQuery {
-        NameQuery { stop_word_ratio: ratio, ..self }
+        NameQuery {
+            stop_word_ratio: ratio,
+            ..self
+        }
     }
 }
 
@@ -238,14 +237,14 @@ impl IndexReader {
         let norms = unsafe { mmap_file(dir.join(NORMS))? };
 
         let config_file = open_file(dir.join(CONFIG))?;
-        let config: Config = serde_json::from_reader(config_file)
-            .map_err(|e| Error::config(e.to_string()))?;
+        let config: Config =
+            serde_json::from_reader(config_file).map_err(|e| Error::config(e.to_string()))?;
         Ok(IndexReader {
-            config: config,
-            ngram: ngram,
-            postings: postings,
-            idmap: idmap,
-            norms: norms,
+            config,
+            ngram,
+            postings,
+            idmap,
+            norms,
         })
     }
 
@@ -299,7 +298,7 @@ impl CollectTopK {
     /// Build a new collector that collects at most `k` results.
     fn new(k: usize) -> CollectTopK {
         CollectTopK {
-            k: k,
+            k,
             queue: BinaryHeap::with_capacity(k),
             byid: FnvHashMap::default(),
         }
@@ -308,10 +307,7 @@ impl CollectTopK {
     /// Collect the top K results from the given searcher using the given
     /// index reader. Return the results with normalized scores sorted in
     /// order of best-to-worst.
-    fn collect(
-        mut self,
-        searcher: &mut Searcher,
-    ) -> SearchResults<NameID> {
+    fn collect(mut self, searcher: &mut Searcher) -> SearchResults<NameID> {
         if self.k == 0 {
             return SearchResults::new();
         }
@@ -349,8 +345,11 @@ impl CollectTopK {
                 self.queue.push(cmp::Reverse(scored));
             }
         }
-        log::debug!("collect count: {:?}, collect push count: {:?}",
-               count, push_count);
+        log::debug!(
+            "collect count: {:?}, collect push count: {:?}",
+            count,
+            push_count
+        );
 
         // Pull out the results from our heap and normalize the scores.
         let mut results = SearchResults::from_min_heap(&mut self.queue);
@@ -405,10 +404,7 @@ struct Searcher<'i> {
 
 impl<'i> Searcher<'i> {
     /// Create a new searcher.
-    fn new(
-        idx: &'i IndexReader,
-        query: &NameQuery,
-    ) -> Searcher<'i> {
+    fn new(idx: &'i IndexReader, query: &NameQuery) -> Searcher<'i> {
         let num_docs = idx.config.num_documents as f64;
         let (mut low, mut high) = (vec![], vec![]);
         let (mut low_terms, mut high_terms) = (vec![], vec![]);
@@ -416,10 +412,12 @@ impl<'i> Searcher<'i> {
         let name = normalize_query(&query.name);
         let mut query_len = 0;
         let mut multiset = FnvHashMap::default();
-        idx.config.ngram_type.iter(idx.config.ngram_size, &name, |term| {
-            *multiset.entry(term).or_insert(0) += 1;
-            query_len += 1;
-        });
+        idx.config
+            .ngram_type
+            .iter(idx.config.ngram_size, &name, |term| {
+                *multiset.entry(term).or_insert(0) += 1;
+                query_len += 1;
+            });
         for (term, &count) in multiset.iter() {
             let postings = PostingIter::new(idx, query.scorer, count, term);
             let ratio = (postings.len() as f64) / num_docs;
@@ -522,15 +520,21 @@ impl<'i> Disjunction<'i> {
         }
         let is_done = queue.is_empty();
         let query_len = query_len as f64;
-        Disjunction { index, query_len, scorer, queue, is_done }
+        Disjunction {
+            index,
+            query_len,
+            scorer,
+            queue,
+            is_done,
+        }
     }
 
     /// Create an empty disjunction that never matches anything.
     fn empty(index: &'i IndexReader, scorer: NameScorer) -> Disjunction<'i> {
         Disjunction {
-            index: index,
+            index,
             query_len: 0.0,
-            scorer: scorer,
+            scorer,
             queue: BinaryHeap::new(),
             is_done: true,
         }
@@ -750,8 +754,8 @@ impl<'i> PostingIter<'i> {
                 // If the term isn't in the index, then return an exhausted
                 // iterator.
                 return PostingIter {
-                    index: index,
-                    scorer: scorer,
+                    index,
+                    scorer,
                     count: 0.0,
                     postings: &[],
                     len: 0,
@@ -769,14 +773,14 @@ impl<'i> PostingIter<'i> {
         let df = len as f64;
         let okapi_idf = (1.0 + (corpus_count - df + 0.5) / (df + 0.5)).log2();
         let mut it = PostingIter {
-            index: index,
-            scorer: scorer,
+            index,
+            scorer,
             count: count as f64,
             postings: &postings[..4 * len],
-            len: len,
+            len,
             posting: None,
             docid: 0,
-            okapi_idf: okapi_idf,
+            okapi_idf,
         };
         // Advance to the first posting.
         it.next();
@@ -809,7 +813,8 @@ impl<'i> PostingIter<'i> {
             NameScorer::TFIDF => self.score_tfidf(),
             NameScorer::Jaccard => self.score_jaccard(),
             NameScorer::QueryRatio => self.score_query_ratio(),
-        }.map(|scored| scored.map_score(|s| s * self.count))
+        }
+        .map(|scored| scored.map_score(|s| s * self.count))
     }
 
     /// Score the current doc ID using Okapi BM25. It's similarish to TF-IDF,
@@ -1004,13 +1009,13 @@ impl IndexWriter {
         let norms = CursorWriter::from_path(dir.join(NORMS))?;
         let config = CursorWriter::from_path(dir.join(CONFIG))?;
         Ok(IndexWriter {
-            ngram: ngram,
-            ngram_type: ngram_type,
-            ngram_size: ngram_size,
-            postings: postings,
-            idmap: idmap,
-            norms: norms,
-            config: config,
+            ngram,
+            ngram_type,
+            ngram_size,
+            postings,
+            idmap,
+            norms,
+            config,
             terms: FnvHashMap::default(),
             next_docid: 0,
             avg_document_len: 0.0,
@@ -1020,8 +1025,7 @@ impl IndexWriter {
     /// Finish writing names and serialize the index to disk.
     pub fn finish(mut self) -> Result<()> {
         let num_docs = self.num_docs();
-        let mut ngram_to_postings: Vec<(String, Postings)> =
-            self.terms.into_iter().collect();
+        let mut ngram_to_postings: Vec<(String, Postings)> = self.terms.into_iter().collect();
         // We could use a BTreeMap and get out our keys in sorted order, but
         // the overhead of inserting into the BTreeMap dwarfs the savings we
         // get from pre-sorted keys.
@@ -1029,7 +1033,9 @@ impl IndexWriter {
 
         for (term, postings) in ngram_to_postings {
             let pos = self.postings.position() as u64;
-            self.ngram.insert(term.as_bytes(), pos).map_err(Error::fst)?;
+            self.ngram
+                .insert(term.as_bytes(), pos)
+                .map_err(Error::fst)?;
             self.postings
                 .write_u32(postings.list.len() as u32)
                 .context(ErrorKind::Io)?;
@@ -1040,12 +1046,16 @@ impl IndexWriter {
             }
         }
 
-        serde_json::to_writer_pretty(&mut self.config, &Config {
-            ngram_type: self.ngram_type,
-            ngram_size: self.ngram_size,
-            avg_document_len: self.avg_document_len,
-            num_documents: num_docs as u64,
-        }).map_err(|e| Error::config(e.to_string()))?;
+        serde_json::to_writer_pretty(
+            &mut self.config,
+            &Config {
+                ngram_type: self.ngram_type,
+                ngram_size: self.ngram_size,
+                avg_document_len: self.avg_document_len,
+                num_documents: num_docs as u64,
+            },
+        )
+        .map_err(|e| Error::config(e.to_string()))?;
         self.ngram.finish().map_err(Error::fst)?;
         self.idmap.flush().context(ErrorKind::Io)?;
         self.postings.flush().context(ErrorKind::Io)?;
@@ -1061,15 +1071,16 @@ impl IndexWriter {
         let docid = self.next_docid(name_id)?;
         let name = normalize_query(name);
         let mut count = 0u16; // document length in number of ngrams
-        self.ngram_type.clone().iter(self.ngram_size, &name, |ngram| {
-            self.insert_term(docid, ngram);
-            // If a document length exceeds 2^16, then it is far too long for
-            // a name anyway, so we cap it at 2^16.
-            count = count.saturating_add(1);
-        });
+        self.ngram_type
+            .clone()
+            .iter(self.ngram_size, &name, |ngram| {
+                self.insert_term(docid, ngram);
+                // If a document length exceeds 2^16, then it is far too long for
+                // a name anyway, so we cap it at 2^16.
+                count = count.saturating_add(1);
+            });
         // Update our mean document length (in ngrams).
-        self.avg_document_len +=
-            (count as f64 - self.avg_document_len) / (self.num_docs() as f64);
+        self.avg_document_len += (count as f64 - self.avg_document_len) / (self.num_docs() as f64);
         // Write the document length to disk, which is used as a normalization
         // term for some scorers (like Okapi-BM25).
         self.norms.write_u16(count).context(ErrorKind::Io)?;
@@ -1115,7 +1126,10 @@ impl Postings {
     /// doesn't exist, then create one (with a zero frequency) and return it.
     fn posting(&mut self, docid: DocID) -> &mut Posting {
         if self.list.last().map_or(true, |x| x.docid != docid) {
-            self.list.push(Posting { docid: docid, frequency: 0 });
+            self.list.push(Posting {
+                docid,
+                frequency: 0,
+            });
         }
         // This unwrap is OK because if the list was empty when this method was
         // called, then we added an element above, and is thus now non-empty.
@@ -1249,23 +1263,14 @@ impl NgramType {
     ///
     /// We don't use normal Rust iterators here because an internal iterator
     /// is much easier to implement.
-    fn iter<'t, F: FnMut(&'t str)>(
-        &self,
-        size: usize,
-        text: &'t str,
-        f: F,
-    ) {
+    fn iter<'t, F: FnMut(&'t str)>(&self, size: usize, text: &'t str, f: F) {
         match *self {
             NgramType::Window => NgramType::iter_window(size, text, f),
             NgramType::Edge => NgramType::iter_edge(size, text, f),
         }
     }
 
-    fn iter_window<'t, F: FnMut(&'t str)>(
-        size: usize,
-        text: &'t str,
-        mut f: F,
-    ) {
+    fn iter_window<'t, F: FnMut(&'t str)>(size: usize, text: &'t str, mut f: F) {
         if size == 0 {
             return;
         }
@@ -1277,11 +1282,7 @@ impl NgramType {
         }
     }
 
-    fn iter_edge<'t, F: FnMut(&'t str)>(
-        max_size: usize,
-        text: &'t str,
-        mut f: F,
-    ) {
+    fn iter_edge<'t, F: FnMut(&'t str)>(max_size: usize, text: &'t str, mut f: F) {
         if max_size == 0 {
             return;
         }
@@ -1335,19 +1336,15 @@ fn normalize_query(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::index::tests::TestContext;
     use super::*;
+    use crate::index::tests::TestContext;
 
     // Test the actual name index.
 
     /// Creates a name index, where each name provided is assigned its own
     /// unique ID, starting at 0.
     fn create_index(index_dir: &Path, names: &[&str]) -> IndexReader {
-        let mut wtr = IndexWriter::open(
-            index_dir,
-            NgramType::Window,
-            3,
-        ).unwrap();
+        let mut wtr = IndexWriter::open(index_dir, NgramType::Window, 3).unwrap();
         for (i, name) in names.iter().enumerate() {
             wtr.insert(i as u64, name).unwrap();
         }
@@ -1371,14 +1368,14 @@ mod tests {
     }
 
     /// Some names involving bruce.
-    const BRUCES: &'static [&'static str] = &[
-        "Bruce Springsteen",  // 0
-        "Bruce Kulick",       // 1
-        "Bruce Arians",       // 2
-        "Bruce Smith",        // 3
-        "Bruce Willis",       // 4
-        "Bruce Wayne",        // 5
-        "Bruce Banner",       // 6
+    const BRUCES: &[&str] = &[
+        "Bruce Springsteen", // 0
+        "Bruce Kulick",      // 1
+        "Bruce Arians",      // 2
+        "Bruce Smith",       // 3
+        "Bruce Willis",      // 4
+        "Bruce Wayne",       // 5
+        "Bruce Banner",      // 6
     ];
 
     #[test]
@@ -1427,9 +1424,7 @@ mod tests {
     fn names_bruces_4() {
         let ctx = TestContext::new("small");
         let idx = create_index(ctx.index_dir(), BRUCES);
-        let query = name_query(
-            "Springsteen Kulick Arians Smith Willis Wayne Banner",
-        );
+        let query = name_query("Springsteen Kulick Arians Smith Willis Wayne Banner");
         let results = idx.search(&query).into_vec();
 
         // This query should hit everything.
@@ -1458,94 +1453,64 @@ mod tests {
 
     #[test]
     fn ngrams_window_weird_sizes() {
-        assert_eq!(ngrams_window(2, "abcdef"), vec![
-            "ab", "bc", "cd", "de", "ef",
-        ]);
-        assert_eq!(ngrams_window(1, "abcdef"), vec![
-            "a", "b", "c", "d", "e", "f",
-        ]);
-        assert_eq!(ngrams_window(2, "ab"), vec![
-            "ab",
-        ]);
-        assert_eq!(ngrams_window(1, "ab"), vec![
-            "a", "b",
-        ]);
-        assert_eq!(ngrams_window(1, "a"), vec![
-            "a",
-        ]);
+        assert_eq!(
+            ngrams_window(2, "abcdef"),
+            vec!["ab", "bc", "cd", "de", "ef",]
+        );
+        assert_eq!(
+            ngrams_window(1, "abcdef"),
+            vec!["a", "b", "c", "d", "e", "f",]
+        );
+        assert_eq!(ngrams_window(2, "ab"), vec!["ab",]);
+        assert_eq!(ngrams_window(1, "ab"), vec!["a", "b",]);
+        assert_eq!(ngrams_window(1, "a"), vec!["a",]);
         assert_eq!(ngrams_window(1, ""), Vec::<&str>::new());
     }
 
     #[test]
     fn ngrams_window_ascii() {
-        assert_eq!(ngrams_window(3, "abcdef"), vec![
-            "abc", "bcd", "cde", "def",
-        ]);
-        assert_eq!(ngrams_window(3, "abcde"), vec![
-            "abc", "bcd", "cde",
-        ]);
-        assert_eq!(ngrams_window(3, "abcd"), vec![
-            "abc", "bcd",
-        ]);
-        assert_eq!(ngrams_window(3, "abc"), vec![
-            "abc",
-        ]);
-        assert_eq!(ngrams_window(3, "ab"), vec![
-            "ab",
-        ]);
-        assert_eq!(ngrams_window(3, "a"), vec![
-            "a",
-        ]);
+        assert_eq!(
+            ngrams_window(3, "abcdef"),
+            vec!["abc", "bcd", "cde", "def",]
+        );
+        assert_eq!(ngrams_window(3, "abcde"), vec!["abc", "bcd", "cde",]);
+        assert_eq!(ngrams_window(3, "abcd"), vec!["abc", "bcd",]);
+        assert_eq!(ngrams_window(3, "abc"), vec!["abc",]);
+        assert_eq!(ngrams_window(3, "ab"), vec!["ab",]);
+        assert_eq!(ngrams_window(3, "a"), vec!["a",]);
         assert_eq!(ngrams_window(3, ""), Vec::<&str>::new());
     }
 
     #[test]
     fn ngrams_window_non_ascii() {
-        assert_eq!(ngrams_window(3, "αβγφδε"), vec![
-            "αβγ", "βγφ", "γφδ", "φδε",
-        ]);
-        assert_eq!(ngrams_window(3, "αβγφδ"), vec![
-            "αβγ", "βγφ", "γφδ",
-        ]);
-        assert_eq!(ngrams_window(3, "αβγφ"), vec![
-            "αβγ", "βγφ",
-        ]);
-        assert_eq!(ngrams_window(3, "αβγ"), vec![
-            "αβγ",
-        ]);
-        assert_eq!(ngrams_window(3, "αβ"), vec![
-            "αβ",
-        ]);
-        assert_eq!(ngrams_window(3, "α"), vec![
-            "α",
-        ]);
+        assert_eq!(
+            ngrams_window(3, "αβγφδε"),
+            vec!["αβγ", "βγφ", "γφδ", "φδε",]
+        );
+        assert_eq!(ngrams_window(3, "αβγφδ"), vec!["αβγ", "βγφ", "γφδ",]);
+        assert_eq!(ngrams_window(3, "αβγφ"), vec!["αβγ", "βγφ",]);
+        assert_eq!(ngrams_window(3, "αβγ"), vec!["αβγ",]);
+        assert_eq!(ngrams_window(3, "αβ"), vec!["αβ",]);
+        assert_eq!(ngrams_window(3, "α"), vec!["α",]);
     }
 
     #[test]
     fn ngrams_edge_ascii() {
-        assert_eq!(ngrams_edge(5, "homer simpson"), vec![
-            "hom", "home", "homer",
-            "sim", "simp", "simps",
-        ]);
-        assert_eq!(ngrams_edge(5, "h"), vec![
-            "h",
-        ]);
-        assert_eq!(ngrams_edge(5, "ho"), vec![
-            "ho",
-        ]);
-        assert_eq!(ngrams_edge(5, "hom"), vec![
-            "hom",
-        ]);
-        assert_eq!(ngrams_edge(5, "home"), vec![
-            "hom", "home",
-        ]);
+        assert_eq!(
+            ngrams_edge(5, "homer simpson"),
+            vec!["hom", "home", "homer", "sim", "simp", "simps",]
+        );
+        assert_eq!(ngrams_edge(5, "h"), vec!["h",]);
+        assert_eq!(ngrams_edge(5, "ho"), vec!["ho",]);
+        assert_eq!(ngrams_edge(5, "hom"), vec!["hom",]);
+        assert_eq!(ngrams_edge(5, "home"), vec!["hom", "home",]);
     }
 
     #[test]
     fn ngrams_edge_non_ascii() {
-        assert_eq!(ngrams_edge(5, "δεαβγφδε δε"), vec![
-            "δεα", "δεαβ", "δεαβγ",
-            "δε",
-        ]);
+        assert_eq!(
+            ngrams_edge(5, "δεαβγφδε δε"),
+            vec!["δεα", "δεαβ", "δεαβγ", "δε",]
+        );
     }
 }

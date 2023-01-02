@@ -30,7 +30,7 @@ impl<W: io::Write> CursorWriter<W> {
     /// Wrap the given writer with a counter.
     pub fn new(wtr: W) -> CursorWriter<W> {
         CursorWriter {
-            wtr: wtr,
+            wtr,
             pos: 0,
         }
     }

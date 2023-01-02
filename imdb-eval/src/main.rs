@@ -57,7 +57,7 @@ fn try_main() -> Result<()> {
     run_eval(
         &args.data_dir,
         &args.eval_dir,
-        args.truth.as_ref().map(|p| p.as_path()),
+        args.truth.as_deref(),
         args.specs()?,
     )
 }
@@ -78,8 +78,11 @@ fn run_eval(
     specs: Vec<Spec>,
 ) -> Result<()> {
     if !data_dir.exists() {
-        bail!("data directory {} does not exist; please use \
-               imdb-rename to create it", data_dir.display());
+        bail!(
+            "data directory {} does not exist; please use \
+               imdb-rename to create it",
+            data_dir.display()
+        );
     }
 
     let mut wtr = csv::Writer::from_writer(io::stdout());
@@ -123,6 +126,7 @@ struct Args {
     result_sizes: Vec<usize>,
     scorers: Vec<Option<NameScorer>>,
     similarities: Vec<Similarity>,
+    #[allow(unused)]
     specs: Vec<String>,
     summarize: Option<PathBuf>,
     truth: Option<PathBuf>,
@@ -131,46 +135,47 @@ struct Args {
 impl Args {
     /// Build a structured set of arguments from clap's matches.
     fn from_matches(matches: &clap::ArgMatches) -> Result<Args> {
-        let data_dir = matches
-            .value_of_os("data-dir")
-            .map(PathBuf::from)
-            .unwrap();
-        let eval_dir = matches
-            .value_of_os("eval-dir")
-            .map(PathBuf::from)
-            .unwrap();
+        let data_dir = matches.value_of_os("data-dir").map(PathBuf::from).unwrap();
+        let eval_dir = matches.value_of_os("eval-dir").map(PathBuf::from).unwrap();
         let specs = match matches.values_of_lossy("specs") {
             None => vec![],
             Some(specs) => specs,
         };
-        let similarities = parse_many_lossy(matches, "sim", vec![
-            Similarity::None,
-            Similarity::Levenshtein,
-            Similarity::Jaro,
-            Similarity::JaroWinkler,
-        ])?;
-        let scorers = parse_many_lossy(matches, "scorer", vec![
-            OptionalNameScorer::from(NameScorer::OkapiBM25),
-            OptionalNameScorer::from(NameScorer::TFIDF),
-            OptionalNameScorer::from(NameScorer::Jaccard),
-            OptionalNameScorer::from(NameScorer::QueryRatio),
-        ])?.into_iter().map(|s| s.0).collect();
-        let ngram_types = parse_many_lossy(
+        let similarities = parse_many_lossy(
             matches,
-            "ngram-type",
-            vec![NgramType::Window],
+            "sim",
+            vec![
+                Similarity::None,
+                Similarity::Levenshtein,
+                Similarity::Jaro,
+                Similarity::JaroWinkler,
+            ],
         )?;
+        let scorers = parse_many_lossy(
+            matches,
+            "scorer",
+            vec![
+                OptionalNameScorer::from(NameScorer::OkapiBM25),
+                OptionalNameScorer::from(NameScorer::TFIDF),
+                OptionalNameScorer::from(NameScorer::Jaccard),
+                OptionalNameScorer::from(NameScorer::QueryRatio),
+            ],
+        )?
+        .into_iter()
+        .map(|s| s.0)
+        .collect();
+        let ngram_types = parse_many_lossy(matches, "ngram-type", vec![NgramType::Window])?;
         Ok(Args {
-            data_dir: data_dir,
+            data_dir,
             debug: matches.is_present("debug"),
             dry_run: matches.is_present("dry-run"),
-            eval_dir: eval_dir,
+            eval_dir,
             ngram_sizes: parse_many_lossy(matches, "ngram-size", vec![3])?,
-            ngram_types: ngram_types,
+            ngram_types,
             result_sizes: parse_many_lossy(matches, "result-size", vec![30])?,
-            scorers: scorers,
-            similarities: similarities,
-            specs: specs,
+            scorers,
+            similarities,
+            specs,
             summarize: matches.value_of_os("summarize").map(PathBuf::from),
             truth: matches.value_of_os("truth").map(PathBuf::from),
         })
@@ -194,17 +199,17 @@ impl Args {
         }
         for spec in specs2.drain(..) {
             for sim in &self.similarities {
-                specs1.push(spec.clone().with_similarity(sim.clone()));
+                specs1.push(spec.clone().with_similarity(*sim));
             }
         }
         for spec in specs1.drain(..) {
             for scorer in &self.scorers {
-                specs2.push(spec.clone().with_scorer(scorer.clone()));
+                specs2.push(spec.clone().with_scorer(*scorer));
             }
         }
         for spec in specs2.drain(..) {
             for ngram_type in &self.ngram_types {
-                specs1.push(spec.clone().with_ngram_type(ngram_type.clone()));
+                specs1.push(spec.clone().with_ngram_type(*ngram_type));
             }
         }
         Ok(specs1)
@@ -240,78 +245,110 @@ fn app() -> clap::App<'static, 'static> {
         .version(clap::crate_version!())
         .max_term_width(100)
         .setting(AppSettings::UnifiedHelpMessage)
-        .arg(Arg::with_name("data-dir")
-             .long("data-dir")
-             .env("IMDB_RENAME_DATA_DIR")
-             .takes_value(true)
-             .default_value_os(DEFAULT_DATA_DIR.as_os_str())
-             .help("The location to store IMDb data files."))
-        .arg(Arg::with_name("debug")
-             .long("debug")
-             .help("Show debug messages. Use this when filing bugs."))
-        .arg(Arg::with_name("dry-run")
-             .long("dry-run")
-             .help("Show the evaluations that would be run and then exit \
-                    without running them."))
-        .arg(Arg::with_name("eval-dir")
-             .long("eval-dir")
-             .env("IMDB_RENAME_EVAL_DIR")
-             .takes_value(true)
-             .default_value_os(DEFAULT_EVAL_DIR.as_os_str())
-             .help("The location to store evaluation index files."))
-        .arg(Arg::with_name("ngram-size")
-             .long("ngram-size")
-             .takes_value(true)
-             .multiple(true)
-             .number_of_values(1)
-             .help("Set the ngram size on which to perform an evaluation. \
+        .arg(
+            Arg::with_name("data-dir")
+                .long("data-dir")
+                .env("IMDB_RENAME_DATA_DIR")
+                .takes_value(true)
+                .default_value_os(DEFAULT_DATA_DIR.as_os_str())
+                .help("The location to store IMDb data files."),
+        )
+        .arg(
+            Arg::with_name("debug")
+                .long("debug")
+                .help("Show debug messages. Use this when filing bugs."),
+        )
+        .arg(Arg::with_name("dry-run").long("dry-run").help(
+            "Show the evaluations that would be run and then exit \
+                    without running them.",
+        ))
+        .arg(
+            Arg::with_name("eval-dir")
+                .long("eval-dir")
+                .env("IMDB_RENAME_EVAL_DIR")
+                .takes_value(true)
+                .default_value_os(DEFAULT_EVAL_DIR.as_os_str())
+                .help("The location to store evaluation index files."),
+        )
+        .arg(
+            Arg::with_name("ngram-size")
+                .long("ngram-size")
+                .takes_value(true)
+                .multiple(true)
+                .number_of_values(1)
+                .help(
+                    "Set the ngram size on which to perform an evaluation. \
                     An evaluation will be performed for each ngram size. \
-                    If no ngram size is given, a default of 3 is used."))
-        .arg(Arg::with_name("ngram-type")
-             .long("ngram-type")
-             .takes_value(true)
-             .multiple(true)
-             .number_of_values(1)
-             .possible_values(NgramType::possible_names())
-             .help("Set the ngram type on which to perform an evaluation. \
+                    If no ngram size is given, a default of 3 is used.",
+                ),
+        )
+        .arg(
+            Arg::with_name("ngram-type")
+                .long("ngram-type")
+                .takes_value(true)
+                .multiple(true)
+                .number_of_values(1)
+                .possible_values(NgramType::possible_names())
+                .help(
+                    "Set the ngram type on which to perform an evaluation. \
                     An evaluation will be performed for each ngram type. \
-                    If no ngram type is given, it defaults to 'window'."))
-        .arg(Arg::with_name("result-size")
-             .long("result-size")
-             .takes_value(true)
-             .multiple(true)
-             .number_of_values(1)
-             .help("Set the result size on which to perform an evaluation. \
+                    If no ngram type is given, it defaults to 'window'.",
+                ),
+        )
+        .arg(
+            Arg::with_name("result-size")
+                .long("result-size")
+                .takes_value(true)
+                .multiple(true)
+                .number_of_values(1)
+                .help(
+                    "Set the result size on which to perform an evaluation. \
                     An evaluation will be performed for each result size. \
-                    If no result size is given, a default of 30 is used."))
-        .arg(Arg::with_name("scorer")
-             .long("scorer")
-             .takes_value(true)
-             .multiple(true)
-             .number_of_values(1)
-             .possible_values(&POSSIBLE_SCORER_NAMES)
-             .help("Set the name scorer function to use. An evaluation is \
+                    If no result size is given, a default of 30 is used.",
+                ),
+        )
+        .arg(
+            Arg::with_name("scorer")
+                .long("scorer")
+                .takes_value(true)
+                .multiple(true)
+                .number_of_values(1)
+                .possible_values(&POSSIBLE_SCORER_NAMES)
+                .help(
+                    "Set the name scorer function to use. An evaluation is \
                     performed for each name function given. By default, \
-                    all name scorers are used, except for 'none'."))
-        .arg(Arg::with_name("sim")
-             .long("sim")
-             .takes_value(true)
-             .multiple(true)
-             .number_of_values(1)
-             .possible_values(Similarity::possible_names())
-             .help("Set the similarity ranker function to use. An evaluation \
+                    all name scorers are used, except for 'none'.",
+                ),
+        )
+        .arg(
+            Arg::with_name("sim")
+                .long("sim")
+                .takes_value(true)
+                .multiple(true)
+                .number_of_values(1)
+                .possible_values(Similarity::possible_names())
+                .help(
+                    "Set the similarity ranker function to use. An evaluation \
                     is performed for each ranker function given. By default, \
-                    all ranker functions are used, including 'none'."))
-        .arg(Arg::with_name("summarize")
-             .long("summarize")
-             .takes_value(true)
-             .number_of_values(1)
-             .help("Print summary statistics from an evaluation run."))
-        .arg(Arg::with_name("truth")
-             .long("truth")
-             .takes_value(true)
-             .help("A file path containing evaluation truth data. By default, \
-                    an evaluation uses truth data embedded in imdb-rename."))
+                    all ranker functions are used, including 'none'.",
+                ),
+        )
+        .arg(
+            Arg::with_name("summarize")
+                .long("summarize")
+                .takes_value(true)
+                .number_of_values(1)
+                .help("Print summary statistics from an evaluation run."),
+        )
+        .arg(
+            Arg::with_name("truth")
+                .long("truth")
+                .takes_value(true)
+                .help(
+                    "A file path containing evaluation truth data. By default, \
+                    an evaluation uses truth data embedded in imdb-rename.",
+                ),
+        )
 }
 
 /// An optional name scorer is a `NameScorer` that may be absent.
@@ -323,15 +360,8 @@ struct OptionalNameScorer(Option<NameScorer>);
 impl FromStr for OptionalNameScorer {
     type Err = imdb_index::Error;
 
-    fn from_str(
-        s: &str,
-    ) -> result::Result<OptionalNameScorer, imdb_index::Error> {
-        let opt =
-            if s == "none" {
-                None
-            } else {
-                Some(s.parse()?)
-            };
+    fn from_str(s: &str) -> result::Result<OptionalNameScorer, imdb_index::Error> {
+        let opt = if s == "none" { None } else { Some(s.parse()?) };
         Ok(OptionalNameScorer(opt))
     }
 }
@@ -343,7 +373,7 @@ impl From<NameScorer> for OptionalNameScorer {
 }
 
 /// Parse a sequence of values from clap.
-fn parse_many_lossy<E: failure::Fail, T: FromStr<Err=E>>(
+fn parse_many_lossy<E: failure::Fail, T: FromStr<Err = E>>(
     matches: &clap::ArgMatches,
     name: &str,
     default: Vec<T>,

@@ -506,7 +506,7 @@ impl Renamer {
     /// Build a query and seed it with the given name, after sanitizing the
     /// name.
     fn name_query(&self, name: &str) -> Query {
-        let name = name.replace(".", " ");
+        let name = name.replace('.', " ");
         let name = name.trim();
         log::debug!("automatic name query: {:?}", name);
         Query::new().name(name)
@@ -660,9 +660,9 @@ impl CandidatePath {
                 }
             };
         Ok(CandidatePath {
-            parent: parent,
-            base_name: base_name,
-            ext: ext,
+            parent,
+            base_name,
+            ext,
         })
     }
 

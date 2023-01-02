@@ -4,18 +4,14 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Instant;
 
-use csv;
 use failure::ResultExt;
 use memmap::Mmap;
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 use crate::error::{Error, ErrorKind, Result};
 use crate::record::{Episode, Rating, Title, TitleKind};
 use crate::scored::SearchResults;
-use crate::util::{
-    IMDB_BASICS, NiceDuration, create_file, csv_file, csv_mmap, open_file,
-};
+use crate::util::{create_file, csv_file, csv_mmap, open_file, NiceDuration, IMDB_BASICS};
 
 pub use self::aka::AKARecordIter;
 pub use self::names::{NameQuery, NameScorer, NgramType};
@@ -143,10 +139,7 @@ impl Index {
     ///
     /// `index_dir` should be the directory containing a previously created
     /// index using `Index::create`.
-    pub fn open<P1: AsRef<Path>, P2: AsRef<Path>>(
-        data_dir: P1,
-        index_dir: P2,
-    ) -> Result<Index> {
+    pub fn open<P1: AsRef<Path>, P2: AsRef<Path>>(data_dir: P1, index_dir: P2) -> Result<Index> {
         IndexBuilder::new().open(data_dir, index_dir)
     }
 
@@ -163,10 +156,7 @@ impl Index {
     ///
     /// This will overwrite any previous index that may have existed in
     /// `index_dir`.
-    pub fn create<P1: AsRef<Path>, P2: AsRef<Path>>(
-        data_dir: P1,
-        index_dir: P2,
-    ) -> Result<Index> {
+    pub fn create<P1: AsRef<Path>, P2: AsRef<Path>>(data_dir: P1, index_dir: P2) -> Result<Index> {
         IndexBuilder::new().create(data_dir, index_dir)
     }
 
@@ -196,10 +186,7 @@ impl Index {
     ///
     /// This returns an error if there was a problem reading the index or the
     /// underlying CSV data.
-    pub fn search(
-        &mut self,
-        query: &names::NameQuery,
-    ) -> Result<SearchResults<Title>> {
+    pub fn search(&mut self, query: &names::NameQuery) -> Result<SearchResults<Title>> {
         let mut results = SearchResults::new();
         // The name index gives us back scores with offsets. The offset can be
         // used to seek our `Title` CSV reader to the corresponding record and
@@ -239,7 +226,11 @@ impl Index {
             _ => None,
         };
         let rating = self.rating(&title.id)?;
-        Ok(MediaEntity { title, episode, rating })
+        Ok(MediaEntity {
+            title,
+            episode,
+            rating,
+        })
     }
 
     /// Returns the `Title` record for the given IMDb ID.
@@ -300,11 +291,7 @@ impl Index {
     /// episode number.
     ///
     /// If there was a problem reading the index, then an error is returned.
-    pub fn episodes(
-        &mut self,
-        tvshow_id: &str,
-        season: u32,
-    ) -> Result<Vec<Episode>> {
+    pub fn episodes(&mut self, tvshow_id: &str, season: u32) -> Result<Vec<Episode>> {
         self.idx_episode.episodes(tvshow_id.as_bytes(), season)
     }
 
@@ -336,16 +323,17 @@ impl Index {
     ///
     /// If the given offset does not point to the start of a record in the CSV
     /// data, then the behavior of this method is unspecified.
-    fn read_record(
-        &mut self,
-        offset: u64,
-    ) -> Result<Option<Title>> {
+    fn read_record(&mut self, offset: u64) -> Result<Option<Title>> {
         let mut pos = csv::Position::new();
         pos.set_byte(offset);
         self.csv_basic.seek(pos).map_err(Error::csv)?;
 
         let mut record = csv::StringRecord::new();
-        if !self.csv_basic.read_record(&mut record).map_err(Error::csv)? {
+        if !self
+            .csv_basic
+            .read_record(&mut record)
+            .map_err(Error::csv)?
+        {
             Ok(None)
         } else {
             let headers = self.csv_basic.headers().map_err(Error::csv)?;
@@ -394,8 +382,8 @@ impl IndexBuilder {
         log::debug!("opening index {}", index_dir.display());
 
         let config_file = open_file(index_dir.join(CONFIG))?;
-        let config: Config = serde_json::from_reader(config_file)
-            .map_err(|e| Error::config(e.to_string()))?;
+        let config: Config =
+            serde_json::from_reader(config_file).map_err(|e| Error::config(e.to_string()))?;
         if config.version != VERSION {
             return Err(Error::version(VERSION, config.version));
         }
@@ -434,8 +422,7 @@ impl IndexBuilder {
     ) -> Result<Index> {
         let data_dir = data_dir.as_ref();
         let index_dir = index_dir.as_ref();
-        fs::create_dir_all(index_dir)
-            .with_context(|_| ErrorKind::path(index_dir))?;
+        fs::create_dir_all(index_dir).with_context(|_| ErrorKind::path(index_dir))?;
         log::info!("creating index at {}", index_dir.display());
 
         // Creating the rating and episode indices are completely independent
@@ -447,13 +434,14 @@ impl IndexBuilder {
             thread::spawn(move || -> Result<()> {
                 let start = Instant::now();
                 rating::Index::create(&data_dir, &index_dir)?;
-                log::info!("created rating index (took {})",
-                      NiceDuration::since(start));
+                log::info!("created rating index (took {})", NiceDuration::since(start));
 
                 let start = Instant::now();
                 episode::Index::create(&data_dir, &index_dir)?;
-                log::info!("created episode index (took {})",
-                      NiceDuration::since(start));
+                log::info!(
+                    "created episode index (took {})",
+                    NiceDuration::since(start)
+                );
                 Ok(())
             })
         };
@@ -470,16 +458,19 @@ impl IndexBuilder {
             self.ngram_type,
             self.ngram_size,
         )?;
-        log::info!("created name index, ngram type: {}, ngram size: {} (took {})",
-              self.ngram_type, self.ngram_size, NiceDuration::since(start));
+        log::info!(
+            "created name index, ngram type: {}, ngram size: {} (took {})",
+            self.ngram_type,
+            self.ngram_size,
+            NiceDuration::since(start)
+        );
 
         job.join().unwrap()?;
 
         // Write out our config.
         let config_file = create_file(index_dir.join(CONFIG))?;
-        serde_json::to_writer_pretty(config_file, &Config {
-            version: VERSION,
-        }).map_err(|e| Error::config(e.to_string()))?;
+        serde_json::to_writer_pretty(config_file, &Config { version: VERSION })
+            .map_err(|e| Error::config(e.to_string()))?;
 
         self.open(data_dir, index_dir)
     }

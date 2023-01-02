@@ -8,7 +8,7 @@ use fst::{self, IntoStreamer, Streamer};
 use crate::error::{Error, Result};
 use crate::index::csv_file;
 use crate::record::Episode;
-use crate::util::{IMDB_EPISODE, fst_set_builder_file, fst_set_file};
+use crate::util::{fst_set_builder_file, fst_set_file, IMDB_EPISODE};
 
 /// The name of the episode index file.
 ///
@@ -50,18 +50,15 @@ impl Index {
         let seasons = unsafe { fst_set_file(index_dir.join(SEASONS))? };
         let tvshows = unsafe { fst_set_file(index_dir.join(TVSHOWS))? };
         Ok(Index {
-            seasons: seasons,
-            tvshows: tvshows,
+            seasons,
+            tvshows,
         })
     }
 
     /// Create an episode index from the given IMDb data directory and write
     /// it to the given index directory. If an episode index already exists,
     /// then it is overwritten.
-    pub fn create<P1: AsRef<Path>, P2: AsRef<Path>>(
-        data_dir: P1,
-        index_dir: P2,
-    ) -> Result<Index> {
+    pub fn create<P1: AsRef<Path>, P2: AsRef<Path>>(data_dir: P1, index_dir: P2) -> Result<Index> {
         let data_dir = data_dir.as_ref();
         let index_dir = index_dir.as_ref();
 
@@ -76,12 +73,10 @@ impl Index {
             seasons.insert(&buf).map_err(Error::fst)?;
         }
 
-        episodes.sort_by(|e1, e2| {
-            (&e1.id, &e1.tvshow_id).cmp(&(&e2.id, &e2.tvshow_id))
-        });
+        episodes.sort_by(|e1, e2| (&e1.id, &e1.tvshow_id).cmp(&(&e2.id, &e2.tvshow_id)));
         for episode in &episodes {
             buf.clear();
-            write_tvshow(&episode, &mut buf)?;
+            write_tvshow(episode, &mut buf)?;
             tvshows.insert(&buf).map_err(Error::fst)?;
         }
 
@@ -102,10 +97,7 @@ impl Index {
         upper.push(0xFF);
 
         let mut episodes = vec![];
-        let mut stream = self.seasons.range()
-            .ge(tvshow_id)
-            .le(upper)
-            .into_stream();
+        let mut stream = self.seasons.range().ge(tvshow_id).le(upper).into_stream();
         while let Some(episode_bytes) = stream.next() {
             episodes.push(read_episode(episode_bytes)?);
         }
@@ -117,11 +109,7 @@ impl Index {
     ///
     /// The episodes are sorted in order of episode number. Episodes without
     /// episode numbers are sorted after episodes with numbers.
-    pub fn episodes(
-        &self,
-        tvshow_id: &[u8],
-        season: u32,
-    ) -> Result<Vec<Episode>> {
+    pub fn episodes(&self, tvshow_id: &[u8], season: u32) -> Result<Vec<Episode>> {
         let mut lower = tvshow_id.to_vec();
         lower.push(0x00);
         lower.extend_from_slice(&u32_to_bytes(season));
@@ -133,10 +121,7 @@ impl Index {
         upper.extend_from_slice(&u32_to_bytes(u32::MAX));
 
         let mut episodes = vec![];
-        let mut stream = self.seasons.range()
-            .ge(lower)
-            .le(upper)
-            .into_stream();
+        let mut stream = self.seasons.range().ge(lower).le(upper).into_stream();
         while let Some(episode_bytes) = stream.next() {
             episodes.push(read_episode(episode_bytes)?);
         }
@@ -151,11 +136,8 @@ impl Index {
         let mut upper = episode_id.to_vec();
         upper.push(0xFF);
 
-        let mut stream = self.tvshows.range()
-            .ge(episode_id)
-            .le(upper)
-            .into_stream();
-        while let Some(tvshow_bytes) = stream.next() {
+        let mut stream = self.tvshows.range().ge(episode_id).le(upper).into_stream();
+        if let Some(tvshow_bytes) = stream.next() {
             return Ok(Some(read_tvshow(tvshow_bytes)?));
         }
         Ok(None)
@@ -213,9 +195,9 @@ fn read_episode(bytes: &[u8]) -> Result<Episode> {
         Ok(id) => id,
     };
     Ok(Episode {
-        id: id,
-        tvshow_id: tvshow_id,
-        season: season,
+        id,
+        tvshow_id,
+        season,
         episode: epnum,
     })
 }
@@ -254,9 +236,9 @@ fn read_tvshow(bytes: &[u8]) -> Result<Episode> {
         Ok(tvshow_id) => tvshow_id,
     };
     Ok(Episode {
-        id: id,
-        tvshow_id: tvshow_id,
-        season: season,
+        id,
+        tvshow_id,
+        season,
         episode: epnum,
     })
 }
@@ -313,9 +295,9 @@ fn u32_to_bytes(n: u32) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use crate::index::tests::TestContext;
     use super::Index;
+    use crate::index::tests::TestContext;
+    use std::collections::HashMap;
 
     #[test]
     fn basics() {
