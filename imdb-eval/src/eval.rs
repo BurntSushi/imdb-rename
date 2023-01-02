@@ -13,7 +13,7 @@ use imdb_index::{
     Similarity,
 };
 use lazy_static::lazy_static;
-use toml;
+
 
 use crate::Result;
 
@@ -149,7 +149,7 @@ impl Spec {
     ) -> Result<Evaluation> {
         let searcher = Searcher::new(self.index(data_dir, eval_dir)?);
         Ok(Evaluation {
-            evaluator: Evaluator { spec: self, searcher: searcher },
+            evaluator: Evaluator { spec: self, searcher },
             tasks: TRUTH.clone().tasks.into_iter(),
         })
     }
@@ -164,7 +164,7 @@ impl Spec {
     ) -> Result<Evaluation> {
         let searcher = Searcher::new(self.index(data_dir, eval_dir)?);
         Ok(Evaluation {
-            evaluator: Evaluator { spec: self, searcher: searcher },
+            evaluator: Evaluator { spec: self, searcher },
             tasks: Truth::from_path(truth_path)?.tasks.into_iter(),
         })
     }
@@ -174,8 +174,8 @@ impl Spec {
     fn query(&self, task: &Task) -> Query {
         Query::new()
             .name(&task.query)
-            .name_scorer(self.scorer.clone())
-            .similarity(self.sim.clone())
+            .name_scorer(self.scorer)
+            .similarity(self.sim)
             .size(self.result_size)
     }
 
@@ -280,7 +280,7 @@ impl Summary {
     pub fn from_task_results(results: &[TaskResult]) -> Vec<Summary> {
         let mut grouped: BTreeMap<&str, Vec<&TaskResult>> = BTreeMap::new();
         for result in results {
-            grouped.entry(&result.name).or_insert(vec![]).push(result);
+            grouped.entry(&result.name).or_default().push(result);
         }
 
         let mut summaries = vec![];
@@ -382,7 +382,7 @@ impl<'s> Evaluator<'s> {
             name: self.spec.to_string(),
             query: task.query.clone(),
             answer: task.answer.clone(),
-            rank: rank,
+            rank,
             duration_seconds: fractional_seconds(&duration),
         })
     }
@@ -434,7 +434,7 @@ impl<'s> Evaluator<'s> {
     /// There are other strategies, but in general, we want to reward high
     /// precision rankers.
     fn rank(&mut self, task: &Task) -> Result<Option<u64>> {
-        let results = self.searcher.search(&self.spec.query(&task))?;
+        let results = self.searcher.search(&self.spec.query(task))?;
 
         let mut rank = results.len() as u64;
         let mut prev_score = None;

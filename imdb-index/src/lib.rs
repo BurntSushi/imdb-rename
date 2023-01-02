@@ -8,11 +8,10 @@ support fuzzy name queries and using TF-IDF-like ranking functions.
 
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::index::{
-    AKARecordIter, Index, IndexBuilder, MediaEntity,
-    NameQuery, NameScorer, NgramType,
+    AKARecordIter, Index, IndexBuilder, MediaEntity, NameQuery, NameScorer, NgramType,
 };
-pub use crate::record::{AKA, Episode, Rating, Title, TitleKind};
-pub use crate::scored::{SearchResults, Scored};
+pub use crate::record::{Episode, Rating, Title, TitleKind, AKA};
+pub use crate::scored::{Scored, SearchResults};
 pub use crate::search::{Query, Searcher, Similarity};
 
 // A macro that creates an error that represents a bug.
@@ -22,7 +21,7 @@ pub use crate::search::{Query, Searcher, Similarity};
 // macro instead of panicking (or worse, silently misinterpreting data).
 macro_rules! bug {
     ($($tt:tt)*) => {
-        return Err($crate::error::Error::bug(format!($($tt)*)));
+        return Err($crate::error::Error::bug(format!($($tt)*)))
     }
 }
 

@@ -2,9 +2,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::result;
 
-use csv;
 use failure::{Backtrace, Context, Fail};
-use fst;
 
 /// A type alias for handling errors throughout imdb-index.
 pub type Result<T> = result::Result<T, Error>;
@@ -144,9 +142,7 @@ pub enum ErrorKind {
 
 impl ErrorKind {
     /// A convenience routine for creating an error associated with a path.
-    pub(crate) fn path<P: AsRef<Path>>(
-        path: P,
-    ) -> ErrorKind {
+    pub(crate) fn path<P: AsRef<Path>>(path: P) -> ErrorKind {
         ErrorKind::Path(path.as_ref().to_path_buf())
     }
 }
@@ -158,9 +154,12 @@ impl fmt::Display for ErrorKind {
                 write!(f, "{}", path.display())
             }
             ErrorKind::VersionMismatch { expected, got } => {
-                write!(f, "index version mismatch: expected version {} \
+                write!(
+                    f,
+                    "index version mismatch: expected version {} \
                            but got version {}. Please rebuild the index.",
-                           expected, got)
+                    expected, got
+                )
             }
             ErrorKind::UnknownTitle(ref unk) => {
                 write!(f, "unrecognized title type: '{}'", unk)

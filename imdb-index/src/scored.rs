@@ -62,7 +62,7 @@ impl<T> SearchResults<T> {
             let score = rescore(result.value());
             result.set_score(score);
         }
-        self.0.sort_by(|s1, s2| s1.cmp(&s2).reverse());
+        self.0.sort_by(|s1, s2| s1.cmp(s2).reverse());
     }
 
     /// Trim this collection so that it contains at most the first `size`
@@ -118,7 +118,7 @@ pub struct Scored<T> {
 impl<T> Scored<T> {
     /// Create a new value `T` with a score of `1.0`.
     pub fn new(value: T) -> Scored<T> {
-        Scored { score: 1.0, value: value }
+        Scored { score: 1.0, value }
     }
 
     /// Return the score for this item.

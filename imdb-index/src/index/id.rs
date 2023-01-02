@@ -2,8 +2,6 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 
-use fst;
-
 use crate::error::{Error, Result};
 use crate::util::{fst_map_builder_file, fst_map_file};
 
@@ -21,7 +19,9 @@ impl IndexReader {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<IndexReader> {
         // We claim it is safe to open the following memory map because we
         // don't mutate them and no other process (should) either.
-        Ok(IndexReader { idx: unsafe { fst_map_file(path)? } })
+        Ok(IndexReader {
+            idx: unsafe { fst_map_file(path)? },
+        })
     }
 
     /// Return the integer associated with the given ID, if it exists.
@@ -38,9 +38,7 @@ pub struct IndexSortedWriter<W> {
 
 impl IndexSortedWriter<io::BufWriter<File>> {
     /// Create an index writer that writes the index to the given file path.
-    pub fn from_path<P: AsRef<Path>>(
-        path: P,
-    ) -> Result<IndexSortedWriter<io::BufWriter<File>>> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<IndexSortedWriter<io::BufWriter<File>>> {
         Ok(IndexSortedWriter {
             wtr: fst_map_builder_file(path)?,
         })

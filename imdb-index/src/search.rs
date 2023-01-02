@@ -4,18 +4,16 @@ use std::fmt;
 use std::result;
 use std::str::FromStr;
 
-use csv;
 use failure::Fail;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use strsim;
 
 use crate::error::{Error, Result};
-use crate::index::{MediaEntity, Index, NameQuery, NameScorer};
+use crate::index::{Index, MediaEntity, NameQuery, NameScorer};
 use crate::record::{Episode, Rating, Title, TitleKind};
 use crate::scored::{Scored, SearchResults};
-use crate::util::{IMDB_BASICS, csv_file};
+use crate::util::{csv_file, IMDB_BASICS};
 
 /// A handle that permits searching IMDb media records with relevance ranking.
 ///
@@ -67,10 +65,7 @@ impl Searcher {
     ///
     /// If there was a problem reading the underlying index or the IMDb data,
     /// then an error is returned.
-    pub fn search(
-        &mut self,
-        query: &Query,
-    ) -> Result<SearchResults<MediaEntity>> {
+    pub fn search(&mut self, query: &Query) -> Result<SearchResults<MediaEntity>> {
         if query.is_empty() {
             return Ok(SearchResults::new());
         }
@@ -110,10 +105,7 @@ impl Searcher {
         Ok(results)
     }
 
-    fn search_exhaustive(
-        &mut self,
-        query: &Query,
-    ) -> Result<SearchResults<MediaEntity>> {
+    fn search_exhaustive(&mut self, query: &Query) -> Result<SearchResults<MediaEntity>> {
         if let Some(ref tvshow_id) = query.tvshow_id {
             return self.search_with_tvshow(query, tvshow_id);
         }
@@ -254,12 +246,12 @@ impl Query {
     /// Searching with an empty query always yields no results.
     pub fn is_empty(&self) -> bool {
         self.name.as_ref().map_or(true, |n| n.is_empty())
-        && self.kinds.is_empty()
-        && self.year.is_none()
-        && self.votes.is_none()
-        && self.season.is_none()
-        && self.episode.is_none()
-        && self.tvshow_id.is_none()
+            && self.kinds.is_empty()
+            && self.year.is_none()
+            && self.votes.is_none()
+            && self.season.is_none()
+            && self.episode.is_none()
+            && self.tvshow_id.is_none()
     }
 
     /// Set the name to query by.
@@ -408,9 +400,9 @@ impl Query {
     /// Note that this only applies filters in this query. e.g., The name
     /// aspect of the query, if one exists, is ignored.
     fn matches(&self, ent: &MediaEntity) -> bool {
-        self.matches_title(&ent.title())
-        && self.matches_rating(ent.rating())
-        && self.matches_episode(ent.episode())
+        self.matches_title(ent.title())
+            && self.matches_rating(ent.rating())
+            && self.matches_episode(ent.episode())
     }
 
     /// Returns true if and only if the given title matches this query.
@@ -492,9 +484,9 @@ impl Query {
     /// the ones used during an evaluation, a bit faster.
     fn has_filters(&self) -> bool {
         self.needs_rating()
-        || self.needs_episode()
-        || !self.kinds.is_empty()
-        || !self.year.is_none()
+            || self.needs_episode()
+            || !self.kinds.is_empty()
+            || !self.year.is_none()
     }
 
     /// Returns true if and only this query has only title filters.
@@ -512,15 +504,14 @@ impl Query {
 
     /// Returns true if and only if this query has an episode filter.
     fn needs_episode(&self) -> bool {
-        !self.season.is_none()
-        || !self.episode.is_none()
-        || !self.tvshow_id.is_none()
+        !self.season.is_none() || !self.episode.is_none() || self.tvshow_id.is_some()
     }
 }
 
 impl Serialize for Query {
     fn serialize<S>(&self, s: S) -> result::Result<S::Ok, S::Error>
-    where S: Serializer
+    where
+        S: Serializer,
     {
         s.serialize_str(&self.to_string())
     }
@@ -528,14 +519,15 @@ impl Serialize for Query {
 
 impl<'a> Deserialize<'a> for Query {
     fn deserialize<D>(d: D) -> result::Result<Query, D::Error>
-    where D: Deserializer<'a>
+    where
+        D: Deserializer<'a>,
     {
         use serde::de::Error;
 
         let querystr = String::deserialize(d)?;
-        querystr.parse().map_err(|e: self::Error| {
-            D::Error::custom(e.to_string())
-        })
+        querystr
+            .parse()
+            .map_err(|e: self::Error| D::Error::custom(e.to_string()))
     }
 }
 
@@ -575,11 +567,21 @@ impl FromStr for Query {
 
             let (name, val) = (dcaps["name"].trim(), dcaps["val"].trim());
             match name {
-                "size" => { q.size = val.parse().map_err(Error::number)?; }
-                "year" => { q.year = val.parse()?; }
-                "votes" => { q.votes = val.parse()?; }
-                "season" => { q.season = val.parse()?; }
-                "episode" => { q.episode = val.parse()?; }
+                "size" => {
+                    q.size = val.parse().map_err(Error::number)?;
+                }
+                "year" => {
+                    q.year = val.parse()?;
+                }
+                "votes" => {
+                    q.votes = val.parse()?;
+                }
+                "season" => {
+                    q.season = val.parse()?;
+                }
+                "episode" => {
+                    q.episode = val.parse()?;
+                }
                 "tvseries" | "tvshow" | "show" => {
                     q.tvshow_id = Some(val.to_string());
                 }
@@ -753,7 +755,10 @@ struct Range<T> {
 
 impl<T> Range<T> {
     pub fn none() -> Range<T> {
-        Range { start: None, end: None }
+        Range {
+            start: None,
+            end: None,
+        }
     }
 
     pub fn is_none(&self) -> bool {
@@ -788,7 +793,7 @@ impl<T: fmt::Display + PartialEq> fmt::Display for Range<T> {
     }
 }
 
-impl<E: Fail, T: FromStr<Err=E>> FromStr for Range<T> {
+impl<E: Fail, T: FromStr<Err = E>> FromStr for Range<T> {
     type Err = Error;
 
     fn from_str(range: &str) -> Result<Range<T>> {
@@ -801,7 +806,10 @@ impl<E: Fail, T: FromStr<Err=E>> FromStr for Range<T> {
                 // need a `Clone` bound.
                 let start = range.parse().map_err(Error::number)?;
                 let end = range.parse().map_err(Error::number)?;
-                return Ok(Range { start: Some(start), end: Some(end) });
+                return Ok(Range {
+                    start: Some(start),
+                    end: Some(end),
+                });
             }
             Some(i) => {
                 let (start, end) = range.split_at(i);
@@ -810,50 +818,74 @@ impl<E: Fail, T: FromStr<Err=E>> FromStr for Range<T> {
         };
         Ok(match (start.is_empty(), end.is_empty()) {
             (true, true) => Range::none(),
-            (true, false) => {
-                Range {
-                    start: None,
-                    end: Some(end.parse().map_err(Error::number)?),
-                }
-            }
-            (false, true) => {
-                Range {
-                    start: Some(start.parse().map_err(Error::number)?),
-                    end: None,
-                }
-            }
-            (false, false) => {
-                Range {
-                    start: Some(start.parse().map_err(Error::number)?),
-                    end: Some(end.parse().map_err(Error::number)?),
-                }
-            }
+            (true, false) => Range {
+                start: None,
+                end: Some(end.parse().map_err(Error::number)?),
+            },
+            (false, true) => Range {
+                start: Some(start.parse().map_err(Error::number)?),
+                end: None,
+            },
+            (false, false) => Range {
+                start: Some(start.parse().map_err(Error::number)?),
+                end: Some(end.parse().map_err(Error::number)?),
+            },
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
+    
 
     use super::*;
 
     #[test]
     fn ranges() {
         let r: Range<u32> = "5-10".parse().unwrap();
-        assert_eq!(r, Range { start: Some(5), end: Some(10) });
+        assert_eq!(
+            r,
+            Range {
+                start: Some(5),
+                end: Some(10)
+            }
+        );
 
         let r: Range<u32> = "5-".parse().unwrap();
-        assert_eq!(r, Range { start: Some(5), end: None });
+        assert_eq!(
+            r,
+            Range {
+                start: Some(5),
+                end: None
+            }
+        );
 
         let r: Range<u32> = "-10".parse().unwrap();
-        assert_eq!(r, Range { start: None, end: Some(10) });
+        assert_eq!(
+            r,
+            Range {
+                start: None,
+                end: Some(10)
+            }
+        );
 
         let r: Range<u32> = "5-5".parse().unwrap();
-        assert_eq!(r, Range { start: Some(5), end: Some(5) });
+        assert_eq!(
+            r,
+            Range {
+                start: Some(5),
+                end: Some(5)
+            }
+        );
 
         let r: Range<u32> = "5".parse().unwrap();
-        assert_eq!(r, Range { start: Some(5), end: Some(5) });
+        assert_eq!(
+            r,
+            Range {
+                start: Some(5),
+                end: Some(5)
+            }
+        );
     }
 
     #[test]
@@ -865,18 +897,29 @@ mod tests {
         assert_eq!(q, Query::new().kind(TitleKind::Movie));
 
         let q: Query = "{movie} {tvshow}".parse().unwrap();
-        assert_eq!(q, Query::new()
-            .kind(TitleKind::Movie).kind(TitleKind::TVSeries));
+        assert_eq!(
+            q,
+            Query::new()
+                .kind(TitleKind::Movie)
+                .kind(TitleKind::TVSeries)
+        );
 
         let q: Query = "{movie}{tvshow}".parse().unwrap();
-        assert_eq!(q, Query::new()
-            .kind(TitleKind::Movie).kind(TitleKind::TVSeries));
+        assert_eq!(
+            q,
+            Query::new()
+                .kind(TitleKind::Movie)
+                .kind(TitleKind::TVSeries)
+        );
 
         let q: Query = "foo {movie} bar {tvshow} baz".parse().unwrap();
-        assert_eq!(q, Query::new()
-            .name("foo bar baz")
-            .kind(TitleKind::Movie)
-            .kind(TitleKind::TVSeries));
+        assert_eq!(
+            q,
+            Query::new()
+                .name("foo bar baz")
+                .kind(TitleKind::Movie)
+                .kind(TitleKind::TVSeries)
+        );
 
         let q: Query = "{size:5}".parse().unwrap();
         assert_eq!(q, Query::new().size(5));
@@ -918,7 +961,8 @@ mod tests {
         let q = Query::new()
             .name("foo bar baz")
             .size(31)
-            .season_ge(4).season_le(5)
+            .season_ge(4)
+            .season_le(5)
             .kind(TitleKind::TVSeries)
             .kind(TitleKind::Movie)
             .similarity(Similarity::Jaro);
@@ -937,7 +981,8 @@ mod tests {
             .name("foo bar baz")
             .name_scorer(None)
             .size(31)
-            .season_ge(4).season_le(4);
+            .season_ge(4)
+            .season_le(4);
         let got = serde_json::to_string(&Test { query }).unwrap();
 
         let expected = r#"{"query":"{scorer:none} {sim:none} {size:31} {season:4} foo bar baz"}"#;
@@ -947,8 +992,7 @@ mod tests {
     #[test]
     fn query_deserialize() {
         let json = r#"{"query": "foo {size:30} bar {season:4} baz {show}"}"#;
-        let expected =
-            "{size:30} {season:4} {show} foo bar baz".parse().unwrap();
+        let expected = "{size:30} {season:4} {show} foo bar baz".parse().unwrap();
 
         #[derive(Deserialize)]
         struct Test {
