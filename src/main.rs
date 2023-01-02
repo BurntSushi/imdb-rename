@@ -286,7 +286,7 @@ fn app() -> clap::App<'static, 'static> {
                     formats numbers with a leading zero if <10, useful for \
                     season and episode numbers. \
                     Example: \
-                    \"s{episode.season | leading_zero}e{episode.episode | \
+                    \"s{series.primaryTitle}/{episode.season | leading_zero}e{episode.episode | \
                     leading_zero} - {title.primaryTitle} ({title.start_year})\"
                     ",
                 ),

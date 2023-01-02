@@ -49,10 +49,7 @@ impl Index {
         // don't mutate them and no other process (should) either.
         let seasons = unsafe { fst_set_file(index_dir.join(SEASONS))? };
         let tvshows = unsafe { fst_set_file(index_dir.join(TVSHOWS))? };
-        Ok(Index {
-            seasons,
-            tvshows,
-        })
+        Ok(Index { seasons, tvshows })
     }
 
     /// Create an episode index from the given IMDb data directory and write

@@ -57,6 +57,7 @@ const CONFIG: &str = "config.json";
 pub struct MediaEntity {
     title: Title,
     episode: Option<Episode>,
+    series: Option<Title>,
     rating: Option<Rating>,
 }
 
@@ -226,9 +227,16 @@ impl Index {
             _ => None,
         };
         let rating = self.rating(&title.id)?;
+
+        let series = match &episode {
+            Some(ep) => self.title(&ep.tvshow_id)?,
+            None => None,
+        };
+
         Ok(MediaEntity {
             title,
             episode,
+            series,
             rating,
         })
     }
