@@ -53,7 +53,7 @@ const CONFIG: &str = "config.json";
 /// routines such as what the [`Searcher`](struct.Searcher.html) provides, and
 /// can also be cheaply constructed by an [`Index`](struct.Index.html) given a
 /// [`Title`](struct.Title.html) or an IMDb ID.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MediaEntity {
     title: Title,
     episode: Option<Episode>,

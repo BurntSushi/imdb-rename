@@ -11,7 +11,7 @@ use crate::error::Error;
 /// This is the primary type of an IMDb media entry. This record defines the
 /// identifier of an IMDb title, which serves as a foreign key in other data
 /// files (such as alternate names, episodes and ratings).
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Title {
     /// An IMDb identifier.
     ///
@@ -201,7 +201,7 @@ pub struct AKA {
 /// provides episode specific information, such as the season and episode
 /// number. The two title records joined correspond to the title record for the
 /// TV show and the title record for the episode.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Episode {
     /// The IMDb title identifier for this episode.
     #[serde(rename = "tconst")]
@@ -219,7 +219,7 @@ pub struct Episode {
 }
 
 /// A rating associated with a single title record.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Rating {
     /// The IMDb title identifier for this rating.
     #[serde(rename = "tconst")]

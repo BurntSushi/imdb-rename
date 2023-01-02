@@ -97,6 +97,7 @@ fn try_main() -> Result<()> {
         &mut searcher,
         &args.files,
         args.dest_dir,
+        args.template.as_deref(),
         args.rename_action,
     )?;
     if proposals.is_empty() {
@@ -128,6 +129,7 @@ struct Args {
     dest_dir: Option<PathBuf>,
     debug: bool,
     files: Vec<PathBuf>,
+    template: Option<String>,
     index_dir: PathBuf,
     ngram_size: usize,
     ngram_type: NgramType,
@@ -150,6 +152,7 @@ impl Args {
                 .unwrap_or_default(),
             matches.is_present("follow"),
         );
+        let template = matches.value_of("template").map(ToOwned::to_owned);
         let query = matches.value_of_lossy("query").map(|q| q.into_owned());
         let data_dir = matches.value_of_os("data-dir").map(PathBuf::from).unwrap();
         let dest_dir = matches.value_of_os("dest-dir").map(PathBuf::from);
@@ -181,6 +184,7 @@ impl Args {
             dest_dir,
             debug: matches.is_present("debug"),
             files,
+            template,
             index_dir,
             ngram_size: matches.value_of_lossy("ngram-size").unwrap().parse()?,
             ngram_type: matches.value_of_lossy("ngram-type").unwrap().parse()?,
@@ -263,6 +267,25 @@ fn app() -> clap::App<'static, 'static> {
                     "The output directory of renamed files \
                     (or symlinks/hardlinks with the -s/-H options). \
                     By default, files are renamed in place.",
+                ),
+        )
+        .arg(
+            Arg::with_name("template")
+                .long("template")
+                .short("t")
+                .takes_value(true)
+                .help(
+                    "If provided, file(s) will be renamed with the given \
+                    template pattern. The tinytemplate engine is used for \
+                    templating. See its syntax for details: \
+                    https://docs.rs/tinytemplate/latest/tinytemplate/syntax/index.html. \
+                    Of note, we add a custom \"leading_zero\" formatter that \
+                    formats numbers with a leading zero if <10, useful for \
+                    season and episode numbers. \
+                    Example: \
+                    \"s{episode.season | leading_zero}e{episode.episode | \
+                    leading_zero} - {title.primaryTitle} ({title.start_year})\"
+                    ",
                 ),
         )
         .arg(
