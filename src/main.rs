@@ -98,6 +98,7 @@ fn try_main() -> Result<()> {
         &args.files,
         args.dest_dir,
         args.template.as_deref(),
+        args.mkdir,
         args.rename_action,
     )?;
     if proposals.is_empty() {
@@ -130,6 +131,7 @@ struct Args {
     debug: bool,
     files: Vec<PathBuf>,
     template: Option<String>,
+    mkdir: bool,
     index_dir: PathBuf,
     ngram_size: usize,
     ngram_type: NgramType,
@@ -185,6 +187,7 @@ impl Args {
             debug: matches.is_present("debug"),
             files,
             template,
+            mkdir: matches.is_present("mkdir"),
             index_dir,
             ngram_size: matches.value_of_lossy("ngram-size").unwrap().parse()?,
             ngram_type: matches.value_of_lossy("ngram-type").unwrap().parse()?,
@@ -287,6 +290,12 @@ fn app() -> clap::App<'static, 'static> {
                     leading_zero} - {title.primaryTitle} ({title.start_year})\"
                     ",
                 ),
+        )
+        .arg(
+            Arg::with_name("mkdir")
+                .long("mkdir")
+                .short("m")
+                .help("Create output directory if it does not exist."),
         )
         .arg(
             Arg::with_name("debug")

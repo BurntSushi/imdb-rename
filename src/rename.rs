@@ -18,6 +18,7 @@ use crate::Result;
 pub struct RenameProposal {
     src: PathBuf,
     dst: PathBuf,
+    mkdir: bool,
     action: RenameAction,
 }
 
@@ -63,6 +64,7 @@ impl RenameProposal {
         src: PathBuf,
         dst_parent: &Path,
         dst_name: &str,
+        mkdir: bool,
         action: RenameAction,
     ) -> RenameProposal {
         lazy_static! {
@@ -73,12 +75,19 @@ impl RenameProposal {
         RenameProposal {
             src,
             dst: dst_parent.join(&*name),
+            mkdir,
             action,
         }
     }
 
     /// Execute this proposal according to `RenameAction`.
     pub fn rename(&self) -> Result<()> {
+        if self.mkdir {
+            if let Some(parent) = self.dst.parent() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
         match self.action {
             RenameAction::Rename => {
                 fs::rename(&self.src, &self.dst).map_err(|e| {
@@ -184,11 +193,12 @@ impl Renamer {
         paths: &[PathBuf],
         dest: Option<PathBuf>,
         template: Option<&str>,
+        mkdir: bool,
         action: RenameAction,
     ) -> Result<Vec<RenameProposal>> {
         let mut proposals = vec![];
         for path in paths {
-            let result = self.propose_one(searcher, path, dest.as_deref(), template, action);
+            let result = self.propose_one(searcher, path, dest.as_deref(), template, mkdir, action);
             let proposal = match result {
                 None => continue,
                 Some(proposal) => proposal,
@@ -240,6 +250,7 @@ impl Renamer {
         path: &Path,
         dest: Option<&Path>,
         template: Option<&str>,
+        mkdir: bool,
         action: RenameAction,
     ) -> Option<RenameProposal> {
         let candidate = match self.candidate(path) {
@@ -330,6 +341,7 @@ impl Renamer {
             src_path,
             &dest_parent_dir,
             &dest_name,
+            mkdir,
             action,
         ))
     }
