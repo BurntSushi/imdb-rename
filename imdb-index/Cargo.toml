@@ -11,7 +11,7 @@ repository = "https://github.com/BurntSushi/imdb-rename"
 readme = "README.md"
 keywords = ["imdb", "movie", "index", "search"]
 license = "Unlicense/MIT"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 csv = "1.1.3"
