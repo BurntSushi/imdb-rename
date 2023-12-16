@@ -2,7 +2,7 @@ use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
 
-use flate2::read::GzDecoder;
+use {anyhow::Context, flate2::read::GzDecoder};
 
 /// The base URL to the IMDb data set.
 ///
@@ -56,17 +56,7 @@ fn download_one(outdir: &Path, dataset: &'static str) -> anyhow::Result<()> {
 
     let url = format!("{}/{}", IMDB_BASE_URL, dataset);
     log::info!("downloading {} to {}", url, outpath.display());
-    let resp = ureq::get(&url).call();
-    if let Some(err) = resp.synthetic_error() {
-        anyhow::bail!("bad HTTP communication: {}", err);
-    }
-    if resp.error() {
-        anyhow::bail!(
-            "bad HTTP response from server: {} {}",
-            resp.status(),
-            resp.status_text()
-        );
-    }
+    let resp = ureq::get(&url).call().context("HTTP error")?;
     log::info!("sorting CSV records");
     write_sorted_csv_records(
         GzDecoder::new(resp.into_reader()),
