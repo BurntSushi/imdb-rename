@@ -146,11 +146,7 @@ struct AKAIndexRecords<R> {
 impl<R: io::Read> AKAIndexRecords<R> {
     /// Create a new streaming iterator over indexable AKA records.
     fn new(rdr: csv::Reader<R>) -> AKAIndexRecords<R> {
-        AKAIndexRecords {
-            rdr: rdr,
-            record: csv::ByteRecord::new(),
-            done: false,
-        }
+        AKAIndexRecords { rdr, record: csv::ByteRecord::new(), done: false }
     }
 }
 

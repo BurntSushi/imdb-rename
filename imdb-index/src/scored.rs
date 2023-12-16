@@ -118,7 +118,7 @@ pub struct Scored<T> {
 impl<T> Scored<T> {
     /// Create a new value `T` with a score of `1.0`.
     pub fn new(value: T) -> Scored<T> {
-        Scored { score: 1.0, value: value }
+        Scored { score: 1.0, value }
     }
 
     /// Return the score for this item.
