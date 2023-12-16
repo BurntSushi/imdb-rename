@@ -682,7 +682,7 @@ impl CandidatePath {
                 }
             }
         };
-        Ok(CandidatePath { parent: parent, base_name: base_name, ext: ext })
+        Ok(CandidatePath { parent, base_name, ext })
     }
 
     /// Convert this candidate path to the desired name based on an IMDb

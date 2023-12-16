@@ -92,7 +92,7 @@ fn read_rating(bytes: &[u8]) -> Result<Rating> {
 
     let i = nul + 1;
     Ok(Rating {
-        id: id,
+        id,
         rating: read_rating_value(&bytes[i..])?,
         votes: read_votes_value(&bytes[i + 4..])?,
     })

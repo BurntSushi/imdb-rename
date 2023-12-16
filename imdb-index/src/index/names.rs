@@ -299,7 +299,7 @@ impl CollectTopK {
     /// Build a new collector that collects at most `k` results.
     fn new(k: usize) -> CollectTopK {
         CollectTopK {
-            k: k,
+            k,
             queue: BinaryHeap::with_capacity(k),
             byid: FnvHashMap::default(),
         }
@@ -525,9 +525,9 @@ impl<'i> Disjunction<'i> {
     /// Create an empty disjunction that never matches anything.
     fn empty(index: &'i IndexReader, scorer: NameScorer) -> Disjunction<'i> {
         Disjunction {
-            index: index,
+            index,
             query_len: 0.0,
-            scorer: scorer,
+            scorer,
             queue: BinaryHeap::new(),
             is_done: true,
         }
@@ -744,8 +744,8 @@ impl<'i> PostingIter<'i> {
                 // If the term isn't in the index, then return an exhausted
                 // iterator.
                 return PostingIter {
-                    index: index,
-                    scorer: scorer,
+                    index,
+                    scorer,
                     count: 0.0,
                     postings: &[],
                     len: 0,
@@ -763,14 +763,14 @@ impl<'i> PostingIter<'i> {
         let df = len as f64;
         let okapi_idf = (1.0 + (corpus_count - df + 0.5) / (df + 0.5)).log2();
         let mut it = PostingIter {
-            index: index,
-            scorer: scorer,
+            index,
+            scorer,
             count: count as f64,
             postings: &postings[..4 * len],
-            len: len,
+            len,
             posting: None,
             docid: 0,
-            okapi_idf: okapi_idf,
+            okapi_idf,
         };
         // Advance to the first posting.
         it.next();
@@ -999,13 +999,13 @@ impl IndexWriter {
         let norms = CursorWriter::from_path(dir.join(NORMS))?;
         let config = CursorWriter::from_path(dir.join(CONFIG))?;
         Ok(IndexWriter {
-            ngram: ngram,
-            ngram_type: ngram_type,
-            ngram_size: ngram_size,
-            postings: postings,
-            idmap: idmap,
-            norms: norms,
-            config: config,
+            ngram,
+            ngram_type,
+            ngram_size,
+            postings,
+            idmap,
+            norms,
+            config,
             terms: FnvHashMap::default(),
             next_docid: 0,
             avg_document_len: 0.0,
@@ -1114,7 +1114,7 @@ impl Postings {
     /// doesn't exist, then create one (with a zero frequency) and return it.
     fn posting(&mut self, docid: DocID) -> &mut Posting {
         if self.list.last().map_or(true, |x| x.docid != docid) {
-            self.list.push(Posting { docid: docid, frequency: 0 });
+            self.list.push(Posting { docid, frequency: 0 });
         }
         // This unwrap is OK because if the list was empty when this method was
         // called, then we added an element above, and is thus now non-empty.

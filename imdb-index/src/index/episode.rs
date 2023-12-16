@@ -197,19 +197,14 @@ fn read_episode(bytes: &[u8]) -> Result<Episode> {
     let season = from_optional_u32("season", &bytes[i..])?;
 
     i += 4;
-    let epnum = from_optional_u32("episode number", &bytes[i..])?;
+    let episode = from_optional_u32("episode number", &bytes[i..])?;
 
     i += 4;
     let id = match String::from_utf8(bytes[i..].to_vec()) {
         Err(err) => bug!("episode id invalid UTF-8: {}", err),
         Ok(id) => id,
     };
-    Ok(Episode {
-        id: id,
-        tvshow_id: tvshow_id,
-        season: season,
-        episode: epnum,
-    })
+    Ok(Episode { id, tvshow_id, season, episode })
 }
 
 fn write_episode(ep: &Episode, buf: &mut Vec<u8>) -> Result<()> {
@@ -238,19 +233,14 @@ fn read_tvshow(bytes: &[u8]) -> Result<Episode> {
     let season = from_optional_u32("season", &bytes[i..])?;
 
     i += 4;
-    let epnum = from_optional_u32("episode number", &bytes[i..])?;
+    let episode = from_optional_u32("episode number", &bytes[i..])?;
 
     i += 4;
     let tvshow_id = match String::from_utf8(bytes[i..].to_vec()) {
         Err(err) => bug!("tvshow_id invalid UTF-8: {}", err),
         Ok(tvshow_id) => tvshow_id,
     };
-    Ok(Episode {
-        id: id,
-        tvshow_id: tvshow_id,
-        season: season,
-        episode: epnum,
-    })
+    Ok(Episode { id, tvshow_id, season, episode })
 }
 
 fn write_tvshow(ep: &Episode, buf: &mut Vec<u8>) -> Result<()> {
