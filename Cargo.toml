@@ -1,6 +1,6 @@
 [package]
 name = "imdb-rename"
-version = "0.1.5"
+version = "0.1.5"  #:version
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
 description = """
 A command line utility for searching IMDb and renaming your media files.
