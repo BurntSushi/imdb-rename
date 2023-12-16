@@ -113,7 +113,6 @@ struct Args {
     result_sizes: Vec<usize>,
     scorers: Vec<Option<NameScorer>>,
     similarities: Vec<Similarity>,
-    specs: Vec<String>,
     summarize: Option<PathBuf>,
     truth: Option<PathBuf>,
 }
@@ -125,10 +124,6 @@ impl Args {
             matches.value_of_os("data-dir").map(PathBuf::from).unwrap();
         let eval_dir =
             matches.value_of_os("eval-dir").map(PathBuf::from).unwrap();
-        let specs = match matches.values_of_lossy("specs") {
-            None => vec![],
-            Some(specs) => specs,
-        };
         let similarities = parse_many_lossy(
             matches,
             "sim",
@@ -155,16 +150,15 @@ impl Args {
         let ngram_types =
             parse_many_lossy(matches, "ngram-type", vec![NgramType::Window])?;
         Ok(Args {
-            data_dir: data_dir,
+            data_dir,
             debug: matches.is_present("debug"),
             dry_run: matches.is_present("dry-run"),
-            eval_dir: eval_dir,
+            eval_dir,
             ngram_sizes: parse_many_lossy(matches, "ngram-size", vec![3])?,
-            ngram_types: ngram_types,
+            ngram_types,
             result_sizes: parse_many_lossy(matches, "result-size", vec![30])?,
-            scorers: scorers,
-            similarities: similarities,
-            specs: specs,
+            scorers,
+            similarities,
             summarize: matches.value_of_os("summarize").map(PathBuf::from),
             truth: matches.value_of_os("truth").map(PathBuf::from),
         })
