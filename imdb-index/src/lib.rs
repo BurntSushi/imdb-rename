@@ -21,9 +21,9 @@ pub use crate::search::{Query, Searcher, Similarity};
 // data on disk is generally outside our control, we return an error using this
 // macro instead of panicking (or worse, silently misinterpreting data).
 macro_rules! bug {
-    ($($tt:tt)*) => {
+    ($($tt:tt)*) => {{
         return Err($crate::error::Error::bug(format!($($tt)*)));
-    }
+    }}
 }
 
 mod error;

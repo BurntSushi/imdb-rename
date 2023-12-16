@@ -18,7 +18,7 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 /// default).
 #[derive(Debug)]
 pub struct TestContext {
-    tmpdir: TempDir,
+    _tmpdir: TempDir,
     data_dir: PathBuf,
     index_dir: PathBuf,
 }
@@ -33,7 +33,7 @@ impl TestContext {
         let tmpdir = TempDir::new("imdb-rename-test-index").unwrap();
         let data_dir = PathBuf::from("../data/test").join(name);
         let index_dir = tmpdir.path().to_path_buf();
-        TestContext { tmpdir, data_dir, index_dir }
+        TestContext { _tmpdir: tmpdir, data_dir, index_dir }
     }
 
     /// Return the path to the data directory for this context.
