@@ -2,7 +2,6 @@ use std::io;
 use std::iter;
 use std::path::Path;
 
-use csv;
 use memmap::Mmap;
 
 use crate::error::{Error, Result};

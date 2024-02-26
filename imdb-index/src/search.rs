@@ -4,11 +4,9 @@ use std::fmt;
 use std::result;
 use std::str::FromStr;
 
-use csv;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use strsim;
 
 use crate::error::{Error, Result};
 use crate::index::{Index, MediaEntity, NameQuery, NameScorer};
@@ -841,8 +839,6 @@ impl<E: std::error::Error + Send + Sync + 'static, T: FromStr<Err = E>> FromStr
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
-
     use super::*;
 
     #[test]

@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 
-use fst;
 use memmap::Mmap;
 
 use crate::error::{Error, Result};

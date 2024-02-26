@@ -1,6 +1,5 @@
 use std::cmp;
 use std::collections::{binary_heap, BinaryHeap};
-use std::convert::TryInto;
 use std::fmt;
 use std::fs::File;
 use std::io::{self, Write};
@@ -9,10 +8,8 @@ use std::str::{self, FromStr};
 use std::time::Instant;
 
 use fnv::FnvHashMap;
-use fst;
 use memmap::Mmap;
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 use crate::error::{Error, Result};
 use crate::index::writer::CursorWriter;

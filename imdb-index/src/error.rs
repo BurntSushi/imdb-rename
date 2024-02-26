@@ -1,9 +1,6 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use csv;
-use fst;
-
 /// A type alias for handling errors throughout imdb-index.
 pub type Result<T> = std::result::Result<T, Error>;
 

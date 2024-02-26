@@ -4,10 +4,8 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Instant;
 
-use csv;
 use memmap::Mmap;
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 use crate::error::{Error, Result};
 use crate::record::{Episode, Rating, Title, TitleKind};

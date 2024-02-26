@@ -1,7 +1,6 @@
-use std::convert::TryInto;
 use std::path::Path;
 
-use fst::{self, IntoStreamer, Streamer};
+use fst::{IntoStreamer, Streamer};
 use memmap::Mmap;
 
 use crate::error::{Error, Result};

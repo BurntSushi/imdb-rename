@@ -4,8 +4,6 @@ use std::io;
 use std::path::Path;
 use std::time;
 
-use csv;
-use fst;
 use memmap::Mmap;
 
 use crate::error::{Error, ErrorKind, Result};

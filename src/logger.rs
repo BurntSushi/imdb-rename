@@ -3,7 +3,7 @@
 // print to stderr. We therefore avoid bringing in extra dependencies just
 // for this functionality.
 
-use log::{self, Log};
+use log::Log;
 
 /// Initialize a simple logger.
 pub fn init() -> anyhow::Result<()> {

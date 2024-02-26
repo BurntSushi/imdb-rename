@@ -12,7 +12,6 @@ use imdb_index::{
 };
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use toml;
 
 /// The default truth data used in an evaluation. It's small enough that we
 /// embed it directly into the binary.
@@ -154,7 +153,7 @@ impl Spec {
     ) -> anyhow::Result<Evaluation> {
         let searcher = Searcher::new(self.index(data_dir, eval_dir)?);
         Ok(Evaluation {
-            evaluator: Evaluator { spec: self, searcher: searcher },
+            evaluator: Evaluator { spec: self, searcher },
             tasks: TRUTH.clone().tasks.into_iter(),
         })
     }
@@ -169,7 +168,7 @@ impl Spec {
     ) -> anyhow::Result<Evaluation> {
         let searcher = Searcher::new(self.index(data_dir, eval_dir)?);
         Ok(Evaluation {
-            evaluator: Evaluator { spec: self, searcher: searcher },
+            evaluator: Evaluator { spec: self, searcher },
             tasks: Truth::from_path(truth_path)?.tasks.into_iter(),
         })
     }
@@ -387,7 +386,7 @@ impl<'s> Evaluator<'s> {
             name: self.spec.to_string(),
             query: task.query.clone(),
             answer: task.answer.clone(),
-            rank: rank,
+            rank,
             duration_seconds: fractional_seconds(&duration),
         })
     }

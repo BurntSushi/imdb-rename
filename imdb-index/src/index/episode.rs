@@ -1,9 +1,8 @@
 use std::cmp;
-use std::convert::TryInto;
 use std::path::Path;
 use std::u32;
 
-use fst::{self, IntoStreamer, Streamer};
+use fst::{IntoStreamer, Streamer};
 use memmap::Mmap;
 
 use crate::error::{Error, Result};
