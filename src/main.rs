@@ -126,6 +126,7 @@ struct Args {
     update_index: bool,
     min_votes: u32,
     rename_action: RenameAction,
+    regions: Vec<String>,
 }
 
 impl Args {
@@ -167,6 +168,12 @@ impl Args {
                 RenameAction::Rename
             }
         };
+        let regions = matches
+            .values_of_lossy("region")
+            .unwrap_or(vec![])
+            .into_iter()
+            .map(|s| s.to_uppercase())
+            .collect();
         Ok(Args {
             data_dir: data_dir,
             dest_dir: dest_dir,
@@ -189,6 +196,7 @@ impl Args {
             update_index: matches.is_present("update-index"),
             min_votes: min_votes,
             rename_action: rename_action,
+            regions: regions,
         })
     }
 
@@ -208,11 +216,11 @@ impl Args {
     }
 
     fn download_all(&self) -> anyhow::Result<bool> {
-        download::download_all(&self.data_dir)
+        download::download_all(&self.data_dir, &self.regions)
     }
 
     fn download_all_update(&self) -> anyhow::Result<()> {
-        download::update_all(&self.data_dir)
+        download::update_all(&self.data_dir, &self.regions)
     }
 }
 
@@ -330,6 +338,13 @@ fn app() -> clap::App<'static, 'static> {
              .conflicts_with("symlink")
              .help("Create a hardlink instead of renaming. \
                     This doesn't work when renaming directories."))
+        .arg(Arg::with_name("region")
+             .long("region")
+             .short("r")
+             .multiple(true)
+             .takes_value(true)
+             .help("Region(s) from aka titles to include local titles. \
+                    By default, only the primary title is used."))
 }
 
 /// Collect all file paths from a sequence of OsStrings from the command line.

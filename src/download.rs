@@ -25,32 +25,42 @@ const DATA_SETS: &'static [&'static str] = &[
 /// is fetched from IMDb. Other paths are left untouched.
 ///
 /// Returns true if and only if at least one file was downloaded.
-pub fn download_all<P: AsRef<Path>>(dir: P) -> anyhow::Result<bool> {
+pub fn download_all<P: AsRef<Path>>(
+    dir: P,
+    regions: &Vec<String>,
+) -> anyhow::Result<bool> {
     let dir = dir.as_ref();
     fs::create_dir_all(dir)?;
 
     let nonexistent = non_existent_data_sets(dir)?;
     for dataset in &nonexistent {
-        download_one(dir, dataset)?;
+        download_one(dir, dataset, regions)?;
     }
     Ok(nonexistent.len() > 0)
 }
 
 /// Update will update all data set files, regardless of whether they already
 /// exist or not.
-pub fn update_all<P: AsRef<Path>>(dir: P) -> anyhow::Result<()> {
+pub fn update_all<P: AsRef<Path>>(
+    dir: P,
+    regions: &Vec<String>,
+) -> anyhow::Result<()> {
     let dir = dir.as_ref();
     fs::create_dir_all(dir)?;
 
     for dataset in DATA_SETS {
-        download_one(dir, dataset)?;
+        download_one(dir, dataset, regions)?;
     }
     Ok(())
 }
 
 /// Downloads a single data set, decompresses it and writes it to the
 /// corresponding file path in the given directory.
-fn download_one(outdir: &Path, dataset: &'static str) -> anyhow::Result<()> {
+fn download_one(
+    outdir: &Path,
+    dataset: &'static str,
+    regions: &Vec<String>,
+) -> anyhow::Result<()> {
     let outpath = dataset_path(outdir, dataset);
     let mut outfile = File::create(&outpath)?;
 
@@ -58,10 +68,19 @@ fn download_one(outdir: &Path, dataset: &'static str) -> anyhow::Result<()> {
     log::info!("downloading {} to {}", url, outpath.display());
     let resp = ureq::get(&url).call().context("HTTP error")?;
     log::info!("sorting CSV records");
-    write_sorted_csv_records(
-        GzDecoder::new(resp.into_reader()),
-        &mut outfile,
-    )?;
+    if !regions.is_empty() && dataset == "title.akas.tsv.gz" {
+        write_sorted_csv_records(
+            GzDecoder::new(resp.into_reader()),
+            &mut outfile,
+            |line, _, _| write_aka_region_lines(line, regions),
+        )?;
+    } else {
+        write_sorted_csv_records(
+            GzDecoder::new(resp.into_reader()),
+            &mut outfile,
+            |_, first, prev| write_only_first_lines(first, prev),
+        )?;
+    }
     Ok(())
 }
 
@@ -96,6 +115,7 @@ fn dataset_path(dir: &Path, name: &'static str) -> PathBuf {
 fn write_sorted_csv_records<R: io::Read, W: io::Write>(
     rdr: R,
     wtr: W,
+    should_write_line: impl Fn(&Vec<u8>, &[u8], Option<&[u8]>) -> bool,
 ) -> anyhow::Result<()> {
     use bstr::{io::BufReadExt, ByteSlice};
     use std::io::Write;
@@ -124,13 +144,27 @@ fn write_sorted_csv_records<R: io::Read, W: io::Write>(
                 line.as_bstr(),
             ),
         };
-        if i > 0 && prev == Some(first) {
-            continue;
+
+        if i == 0 || should_write_line(line, first, prev) {
+            prev = Some(first);
+            wtr.write_all(&line)?;
+            wtr.write_all(b"\n")?;
         }
-        prev = Some(first);
-        wtr.write_all(&line)?;
-        wtr.write_all(b"\n")?;
     }
     wtr.flush()?;
     Ok(())
+}
+
+fn write_only_first_lines(first: &[u8], prev: Option<&[u8]>) -> bool {
+    prev != Some(first)
+}
+
+fn write_aka_region_lines(line: &Vec<u8>, regions: &Vec<String>) -> bool {
+    use bstr::ByteSlice;
+
+    let region = match line.split_str("\t").nth(3) {
+        Some(region) => std::str::from_utf8(region).unwrap().to_string(),
+        None => return false,
+    };
+    regions.contains(&region)
 }

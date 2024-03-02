@@ -543,6 +543,8 @@ fn create_name_index(
         count += 1;
         title_count += 1;
 
+        let mut titles = vec![title.to_owned()];
+
         twtr.insert(id.as_bytes(), pos.byte())?;
         // Index the primary name.
         wtr.insert(pos.byte(), title)?;
@@ -550,13 +552,15 @@ fn create_name_index(
             // Index the "original" name.
             wtr.insert(pos.byte(), original_title)?;
             count += 1;
+            titles.push(original_title.to_owned());
         }
         // Now index all of the alternate names, if they exist.
         for result in aka_index.find(id.as_bytes())? {
             let akarecord = result?;
-            if title != akarecord.title {
+            if !titles.contains(&&akarecord.title) {
                 wtr.insert(pos.byte(), &akarecord.title)?;
                 count += 1;
+                titles.push(akarecord.title);
             }
         }
     }
