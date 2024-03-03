@@ -27,7 +27,7 @@ const DATA_SETS: &'static [&'static str] = &[
 /// Returns true if and only if at least one file was downloaded.
 pub fn download_all<P: AsRef<Path>>(
     dir: P,
-    regions: &Vec<String>,
+    regions: &[String],
 ) -> anyhow::Result<bool> {
     let dir = dir.as_ref();
     fs::create_dir_all(dir)?;
@@ -43,7 +43,7 @@ pub fn download_all<P: AsRef<Path>>(
 /// exist or not.
 pub fn update_all<P: AsRef<Path>>(
     dir: P,
-    regions: &Vec<String>,
+    regions: &[String],
 ) -> anyhow::Result<()> {
     let dir = dir.as_ref();
     fs::create_dir_all(dir)?;
@@ -59,7 +59,7 @@ pub fn update_all<P: AsRef<Path>>(
 fn download_one(
     outdir: &Path,
     dataset: &'static str,
-    regions: &Vec<String>,
+    regions: &[String],
 ) -> anyhow::Result<()> {
     let outpath = dataset_path(outdir, dataset);
     let mut outfile = File::create(&outpath)?;
@@ -68,19 +68,17 @@ fn download_one(
     log::info!("downloading {} to {}", url, outpath.display());
     let resp = ureq::get(&url).call().context("HTTP error")?;
     log::info!("sorting CSV records");
-    if !regions.is_empty() && dataset == "title.akas.tsv.gz" {
-        write_sorted_csv_records(
-            GzDecoder::new(resp.into_reader()),
-            &mut outfile,
-            |line, _, _| write_aka_region_lines(line, regions),
-        )?;
-    } else {
-        write_sorted_csv_records(
-            GzDecoder::new(resp.into_reader()),
-            &mut outfile,
-            |_, first, prev| write_only_first_lines(first, prev),
-        )?;
-    }
+    write_sorted_csv_records(
+        GzDecoder::new(resp.into_reader()),
+        &mut outfile,
+        |line, first, prev| {
+            if !regions.is_empty() && dataset == "title.akas.tsv.gz" {
+                write_aka_region_lines(line, regions)
+            } else {
+                write_only_first_lines(first, prev)
+            }
+        },
+    )?;
     Ok(())
 }
 
@@ -159,7 +157,7 @@ fn write_only_first_lines(first: &[u8], prev: Option<&[u8]>) -> bool {
     prev != Some(first)
 }
 
-fn write_aka_region_lines(line: &Vec<u8>, regions: &Vec<String>) -> bool {
+fn write_aka_region_lines(line: &Vec<u8>, regions: &[String]) -> bool {
     use bstr::ByteSlice;
 
     let region = match line.split_str("\t").nth(3) {

@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process;
 
-use imdb_index::{Index, IndexBuilder, NgramType, Searcher};
+use imdb_index::{Index, IndexBuilder, NgramType, Query, Searcher};
 use lazy_static::lazy_static;
 use tabwriter::TabWriter;
 use walkdir::WalkDir;
@@ -59,7 +59,10 @@ fn try_main() -> anyhow::Result<()> {
     let mut searcher = args.searcher()?;
     let results = match args.query {
         None => None,
-        Some(ref query) => Some(searcher.search(&query.parse()?)?),
+        Some(ref query) => Some(
+            searcher
+                .search(&query.parse::<Query>()?.regions(&args.regions))?,
+        ),
     };
     if args.files.is_empty() {
         let results = match results {
@@ -75,7 +78,8 @@ fn try_main() -> anyhow::Result<()> {
         .good_threshold(0.25)
         .regex_episode(&args.regex_episode)
         .regex_season(&args.regex_season)
-        .regex_year(&args.regex_year);
+        .regex_year(&args.regex_year)
+        .regions(&args.regions);
     if let Some(ref results) = results {
         builder.force(choose(&mut searcher, results.as_slice(), 0.25)?);
     }
