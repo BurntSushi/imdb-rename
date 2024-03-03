@@ -404,6 +404,14 @@ impl Query {
         self
     }
 
+    /// Add a region, if not already present.
+    fn add_region(&mut self, region: &str) {
+        let region = region.to_uppercase();
+        if !self.regions.contains(&region) {
+            self.regions.push(region);
+        }
+    }
+
     /// Add a region, used to define preferable best_title for MediaEntity
     /// from aka titles.
     ///
@@ -413,14 +421,11 @@ impl Query {
     /// Note that it is not possible to remove regions from an existing
     /// query. Instead, build a new query from scratch.
     pub fn region(mut self, region: &str) -> Query {
-        let region = region.to_uppercase();
-        if !self.regions.contains(&region) {
-            self.regions.push(region);
-        }
+        self.add_region(region);
         self
     }
 
-    /// Set the regions, used to define preferable best_title for MediaEntity
+    /// Add the regions, used to define preferable best_title for MediaEntity
     /// from aka titles.
     ///
     /// Multiple regions can be added to query, search result will depends
@@ -429,7 +434,9 @@ impl Query {
     /// Note that it is not possible to remove regions from an existing
     /// query. Instead, build a new query from scratch.
     pub fn regions(mut self, regions: &[String]) -> Query {
-        self.regions = regions.to_vec();
+        for region in regions {
+            self.add_region(region);
+        }
         self
     }
 
