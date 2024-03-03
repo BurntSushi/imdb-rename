@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process;
 
-use imdb_index::{Index, IndexBuilder, NgramType, Searcher};
+use imdb_index::{Index, IndexBuilder, NgramType, Query, Searcher};
 use lazy_static::lazy_static;
 use tabwriter::TabWriter;
 use walkdir::WalkDir;
@@ -59,7 +59,10 @@ fn try_main() -> anyhow::Result<()> {
     let mut searcher = args.searcher()?;
     let results = match args.query {
         None => None,
-        Some(ref query) => Some(searcher.search(&query.parse()?)?),
+        Some(ref query) => Some(
+            searcher
+                .search(&query.parse::<Query>()?.regions(&args.regions))?,
+        ),
     };
     if args.files.is_empty() {
         let results = match results {
@@ -75,7 +78,8 @@ fn try_main() -> anyhow::Result<()> {
         .good_threshold(0.25)
         .regex_episode(&args.regex_episode)
         .regex_season(&args.regex_season)
-        .regex_year(&args.regex_year);
+        .regex_year(&args.regex_year)
+        .regions(&args.regions);
     if let Some(ref results) = results {
         builder.force(choose(&mut searcher, results.as_slice(), 0.25)?);
     }
@@ -126,6 +130,7 @@ struct Args {
     update_index: bool,
     min_votes: u32,
     rename_action: RenameAction,
+    regions: Vec<String>,
 }
 
 impl Args {
@@ -167,6 +172,12 @@ impl Args {
                 RenameAction::Rename
             }
         };
+        let regions = matches
+            .values_of_lossy("region")
+            .unwrap_or(vec![])
+            .into_iter()
+            .map(|s| s.to_uppercase())
+            .collect();
         Ok(Args {
             data_dir: data_dir,
             dest_dir: dest_dir,
@@ -189,6 +200,7 @@ impl Args {
             update_index: matches.is_present("update-index"),
             min_votes: min_votes,
             rename_action: rename_action,
+            regions: regions,
         })
     }
 
@@ -208,11 +220,11 @@ impl Args {
     }
 
     fn download_all(&self) -> anyhow::Result<bool> {
-        download::download_all(&self.data_dir)
+        download::download_all(&self.data_dir, &self.regions)
     }
 
     fn download_all_update(&self) -> anyhow::Result<()> {
-        download::update_all(&self.data_dir)
+        download::update_all(&self.data_dir, &self.regions)
     }
 }
 
@@ -330,6 +342,13 @@ fn app() -> clap::App<'static, 'static> {
              .conflicts_with("symlink")
              .help("Create a hardlink instead of renaming. \
                     This doesn't work when renaming directories."))
+        .arg(Arg::with_name("region")
+             .long("region")
+             .short("r")
+             .multiple(true)
+             .takes_value(true)
+             .help("Region(s) from aka titles to include local titles. \
+                    By default, only the primary title is used."))
 }
 
 /// Collect all file paths from a sequence of OsStrings from the command line.

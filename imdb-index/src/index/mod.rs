@@ -59,6 +59,7 @@ pub struct MediaEntity {
     title: Title,
     episode: Option<Episode>,
     rating: Option<Rating>,
+    best_title: String,
 }
 
 impl MediaEntity {
@@ -75,6 +76,11 @@ impl MediaEntity {
     /// Return a reference to the underlying `Rating`, if it exists.
     pub fn rating(&self) -> Option<&Rating> {
         self.rating.as_ref()
+    }
+
+    /// Return a reference to the underlying best title.
+    pub fn best_title(&self) -> &String {
+        &self.best_title
     }
 }
 
@@ -219,10 +225,14 @@ impl Index {
     /// This returns an error if there was a problem reading the underlying
     /// index. If no such title exists for the given ID, then `None` is
     /// returned.
-    pub fn entity(&mut self, id: &str) -> Result<Option<MediaEntity>> {
+    pub fn entity(
+        &mut self,
+        id: &str,
+        regions: &[String],
+    ) -> Result<Option<MediaEntity>> {
         match self.title(id)? {
             None => Ok(None),
-            Some(title) => self.entity_from_title(title).map(Some),
+            Some(title) => self.entity_from_title(title, regions).map(Some),
         }
     }
 
@@ -230,13 +240,18 @@ impl Index {
     ///
     /// This is like the `entity` method, except it takes a `Title` record as
     /// given.
-    pub fn entity_from_title(&mut self, title: Title) -> Result<MediaEntity> {
+    pub fn entity_from_title(
+        &mut self,
+        title: Title,
+        regions: &[String],
+    ) -> Result<MediaEntity> {
         let episode = match title.kind {
             TitleKind::TVEpisode => self.episode(&title.id)?,
             _ => None,
         };
         let rating = self.rating(&title.id)?;
-        Ok(MediaEntity { title, episode, rating })
+        let best_title = self.best_title(&title, regions)?;
+        Ok(MediaEntity { title, episode, rating, best_title })
     }
 
     /// Returns the `Title` record for the given IMDb ID.
@@ -249,6 +264,53 @@ impl Index {
             None => Ok(None),
             Some(offset) => self.read_record(offset),
         }
+    }
+
+    /// Returns the best title for the given `Title` and regions.
+    ///
+    /// The best_title method takes a title and a list of regions.
+    /// If the list is empty, it returns the title as is.
+    /// If not, it searches through the AKA records associated with the title.
+    /// It looks for the AKA record whose region is earliest in the provided list
+    /// and, if there's a tie, prefers the one with the type "imdbDisplay".
+    /// It returns the title of the best AKA record found,
+    /// or the original title if no suitable AKA record is found.
+    pub fn best_title(
+        &mut self,
+        title: &Title,
+        regions: &[String],
+    ) -> Result<String> {
+        // If regions is empty, return the title
+        if regions.is_empty() {
+            return Ok(title.title.clone());
+        }
+
+        // Find the best aka_record
+        let best_aka_record = self
+            .aka_records(&title.id)?
+            .filter_map(Result::ok)
+            .filter(|aka_record| regions.contains(&aka_record.region))
+            .min_by(|a, b| {
+                let a_index =
+                    regions.iter().position(|r| r == &a.region).unwrap();
+                let b_index =
+                    regions.iter().position(|r| r == &b.region).unwrap();
+
+                // If the regions are the same and the first type contains "imdbDisplay"
+                // prefer the first one, otherwise prefer the second one
+                if a_index == b_index {
+                    if a.types.contains("imdbDisplay") {
+                        return std::cmp::Ordering::Less;
+                    }
+                    return std::cmp::Ordering::Greater;
+                }
+
+                a_index.cmp(&b_index)
+            });
+
+        // Return the title of the best aka_record, or the original title if none was found
+        Ok(best_aka_record
+            .map_or_else(|| title.title.clone(), |aka| aka.title.clone()))
     }
 
     /// Returns an iterator over all `AKA` records for the given IMDb ID.
@@ -543,6 +605,8 @@ fn create_name_index(
         count += 1;
         title_count += 1;
 
+        let mut titles = vec![title.to_owned()];
+
         twtr.insert(id.as_bytes(), pos.byte())?;
         // Index the primary name.
         wtr.insert(pos.byte(), title)?;
@@ -550,13 +614,15 @@ fn create_name_index(
             // Index the "original" name.
             wtr.insert(pos.byte(), original_title)?;
             count += 1;
+            titles.push(original_title.to_owned());
         }
         // Now index all of the alternate names, if they exist.
         for result in aka_index.find(id.as_bytes())? {
             let akarecord = result?;
-            if title != akarecord.title {
+            if !titles.contains(&&akarecord.title) {
                 wtr.insert(pos.byte(), &akarecord.title)?;
                 count += 1;
+                titles.push(akarecord.title);
             }
         }
     }
