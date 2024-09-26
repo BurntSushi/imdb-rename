@@ -149,6 +149,7 @@ pub struct Renamer {
     episode: Regex,
     season: Regex,
     year: Regex,
+    regions: Vec<String>,
 }
 
 impl Renamer {
@@ -346,7 +347,9 @@ impl Renamer {
             .kind(TitleKind::TVShort)
             .kind(TitleKind::TVSpecial)
             .kind(TitleKind::Video)
-            .votes_ge(self.min_votes);
+            .votes_ge(self.min_votes)
+            .regions(&self.regions);
+
         log::debug!("automatic 'any' query: {:?}", query);
         self.choose_one(searcher, &query)
     }
@@ -378,7 +381,7 @@ impl Renamer {
                 tvshow.title().id,
             ),
         };
-        match searcher.index().entity(&ep.id)? {
+        match searcher.index().entity(&ep.id, &vec![])? {
             Some(ent) => Ok(ent),
             None => anyhow::bail!(
                 "could not find media entity for episode {}",
@@ -416,7 +419,9 @@ impl Renamer {
             .name_query(&candidate.tvshow_title)
             .kind(TitleKind::TVMiniSeries)
             .kind(TitleKind::TVSeries)
-            .votes_ge(self.min_votes);
+            .votes_ge(self.min_votes)
+            .regions(&self.regions);
+
         log::debug!("automatic 'tvshow for episode' query: {:?}", query);
         self.choose_one(searcher, &query)
     }
@@ -694,11 +699,11 @@ impl CandidatePath {
                 "S{:02}E{:02} - {}",
                 ep.season.unwrap_or(0),
                 ep.episode.unwrap_or(0),
-                ent.title().title,
+                ent.best_title(),
             ),
             None => match ent.title().start_year {
-                None => ent.title().title.to_string(),
-                Some(year) => format!("{} ({})", ent.title().title, year),
+                None => ent.best_title().to_string(),
+                Some(year) => format!("{} ({})", ent.best_title(), year),
             },
         };
         match self.ext {
@@ -717,6 +722,7 @@ pub struct RenamerBuilder {
     regex_episode: String,
     regex_season: String,
     regex_year: String,
+    regions: Vec<String>,
 }
 
 impl RenamerBuilder {
@@ -729,6 +735,7 @@ impl RenamerBuilder {
             regex_episode: r"[Ee](?P<episode>[0-9]+)".into(),
             regex_season: r"[Ss](?P<season>[0-9]+)".into(),
             regex_year: r"\b(?P<year>[0-9]{4})\b".into(),
+            regions: vec![],
         }
     }
 
@@ -743,6 +750,7 @@ impl RenamerBuilder {
             episode: Regex::new(&self.regex_episode)?,
             season: Regex::new(&self.regex_season)?,
             year: Regex::new(&self.regex_year)?,
+            regions: self.regions.clone(),
         })
     }
 
@@ -808,6 +816,15 @@ impl RenamerBuilder {
     /// extracted via the `year` named capture group.
     pub fn regex_year(&mut self, pattern: &str) -> &mut RenamerBuilder {
         self.regex_year = pattern.to_string();
+        self
+    }
+
+    /// Set the regions to search for entities.
+    ///
+    /// This is used when formulating queries to propose renames to localized
+    /// tiles. If no regions are specified, then original titles are used.
+    pub fn regions(&mut self, regions: &[String]) -> &mut RenamerBuilder {
+        self.regions = regions.to_vec();
         self
     }
 }

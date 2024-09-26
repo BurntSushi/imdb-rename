@@ -96,13 +96,13 @@ impl Searcher {
                 break;
             }
             let (score, title) = r.into_pair();
-            let entity = self.idx.entity_from_title(title)?;
+            let entity = self.idx.entity_from_title(title, &query.regions)?;
             if query.matches(&entity) {
                 results.push(Scored::new(entity).with_score(score));
             }
         }
         if !query.similarity.is_none() {
-            results.rescore(|e| self.similarity(query, &e.title().title));
+            results.rescore(|e| self.similarity(query, &e.best_title()));
         }
         Ok(results)
     }
@@ -128,7 +128,7 @@ impl Searcher {
             let mut results = SearchResults::new();
             for nresult in nresults.into_vec().into_iter().take(query.size) {
                 let (score, (id, _)) = nresult.into_pair();
-                let entity = match self.idx.entity(&id)? {
+                let entity = match self.idx.entity(&id, &query.regions)? {
                     None => continue,
                     Some(entity) => entity,
                 };
@@ -148,7 +148,8 @@ impl Searcher {
             let mut results = SearchResults::new();
             for tresult in tresults.into_vec().into_iter().take(query.size) {
                 let (score, title) = tresult.into_pair();
-                let entity = self.idx.entity_from_title(title)?;
+                let entity =
+                    self.idx.entity_from_title(title, &query.regions)?;
                 results.push(Scored::new(entity).with_score(score));
             }
             Ok(results)
@@ -156,12 +157,13 @@ impl Searcher {
             let mut results = SearchResults::new();
             for result in rdr.deserialize() {
                 let title = result.map_err(Error::csv)?;
-                let entity = self.idx.entity_from_title(title)?;
+                let entity =
+                    self.idx.entity_from_title(title, &query.regions)?;
                 if query.matches(&entity) {
                     results.push(Scored::new(entity));
                 }
             }
-            results.rescore(|e| self.similarity(query, &e.title().title));
+            results.rescore(|e| self.similarity(query, &e.best_title()));
             Ok(results)
         }
     }
@@ -173,7 +175,7 @@ impl Searcher {
     ) -> Result<SearchResults<MediaEntity>> {
         let mut results = SearchResults::new();
         for ep in self.idx.seasons(tvshow_id)? {
-            let entity = match self.idx.entity(&ep.id)? {
+            let entity = match self.idx.entity(&ep.id, &query.regions)? {
                 None => continue,
                 Some(entity) => entity,
             };
@@ -182,7 +184,7 @@ impl Searcher {
             }
         }
         if !query.similarity.is_none() {
-            results.rescore(|e| self.similarity(query, &e.title().title));
+            results.rescore(|e| self.similarity(query, &e.best_title()));
         }
         Ok(results)
     }
@@ -221,6 +223,7 @@ pub struct Query {
     season: Range<u32>,
     episode: Range<u32>,
     tvshow_id: Option<String>,
+    regions: Vec<String>,
 }
 
 impl Default for Query {
@@ -243,6 +246,7 @@ impl Query {
             season: Range::none(),
             episode: Range::none(),
             tvshow_id: None,
+            regions: vec![],
         }
     }
 
@@ -397,6 +401,42 @@ impl Query {
     /// This automatically limits all results to episodes.
     pub fn tvshow_id(mut self, tvshow_id: &str) -> Query {
         self.tvshow_id = Some(tvshow_id.to_string());
+        self
+    }
+
+    /// Add a region, if not already present.
+    fn add_region(&mut self, region: &str) {
+        let region = region.to_uppercase();
+        if !self.regions.contains(&region) {
+            self.regions.push(region);
+        }
+    }
+
+    /// Add a region, used to define preferable best_title for MediaEntity
+    /// from aka titles.
+    ///
+    /// Multiple regions can be added to query, search result will depends
+    /// on their order.
+    ///
+    /// Note that it is not possible to remove regions from an existing
+    /// query. Instead, build a new query from scratch.
+    pub fn region(mut self, region: &str) -> Query {
+        self.add_region(region);
+        self
+    }
+
+    /// Add the regions, used to define preferable best_title for MediaEntity
+    /// from aka titles.
+    ///
+    /// Multiple regions can be added to query, search result will depends
+    /// on their order.
+    ///
+    /// Note that it is not possible to remove regions from an existing
+    /// query. Instead, build a new query from scratch.
+    pub fn regions(mut self, regions: &[String]) -> Query {
+        for region in regions {
+            self.add_region(region);
+        }
         self
     }
 
@@ -601,6 +641,9 @@ impl FromStr for Query {
                     } else {
                         q.name_scorer = Some(val.parse()?);
                     }
+                }
+                "region" => {
+                    q = q.region(val);
                 }
                 unk => return Err(Error::unknown_directive(unk)),
             }
@@ -905,6 +948,13 @@ mod tests {
 
         let q: Query = "{year:-}".parse().unwrap();
         assert_eq!(q, Query::new());
+
+        let q: Query = "{region:us}{region:GB}".parse().unwrap();
+        assert_eq!(q, Query::new().region("US").region("GB"));
+        assert_eq!(
+            q,
+            Query::new().regions(&["US".to_string(), "GB".to_string()])
+        );
     }
 
     #[test]

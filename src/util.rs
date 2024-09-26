@@ -114,7 +114,7 @@ fn write_tsv_title<W: io::Write>(
         score,
         ent.title().id,
         ent.title().kind,
-        ent.title().title,
+        ent.best_title(),
         ent.title()
             .start_year
             .map(|y| y.to_string())
@@ -145,7 +145,7 @@ fn write_tsv_episode<W: io::Write>(
         score,
         ent.title().id,
         ent.title().kind,
-        ent.title().title,
+        ent.best_title(),
         ent.title()
             .start_year
             .map(|y| y.to_string())
