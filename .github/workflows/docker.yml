@@ -1,0 +1,138 @@
+name: Docker — Build & Publish
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+      - master
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build (Linux musl) & Push Docker image
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Rust toolchain ───────────────────────────────────────────────────────
+      - name: Install Rust stable + musl target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      # musl-tools fournit le linker musl-gcc nécessaire à la compilation statique
+      - name: Install musl-tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      # ── Cache Cargo ──────────────────────────────────────────────────────────
+      - name: Cache Cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-musl-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-musl-cargo-
+
+      # ── Compilation statique Linux ────────────────────────────────────────────
+      - name: Build imdb-rename (x86_64-unknown-linux-musl, release)
+        run: |
+          cargo build \
+            --release \
+            --target x86_64-unknown-linux-musl \
+            --bin imdb-rename
+
+      # Placer le binaire à la racine pour le COPY du Dockerfile
+      - name: Copy binary to workspace root
+        run: |
+          cp target/x86_64-unknown-linux-musl/release/imdb-rename ./imdb-rename
+          file ./imdb-rename   # vérification : doit afficher "statically linked"
+
+      # ── Docker metadata (tags & labels) ──────────────────────────────────────
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Tag de version sur git tag (ex: v0.1.6 → 0.1.6 + latest)
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # SHA court sur chaque push de branche
+            type=sha,prefix=sha-
+            # Tag "latest" sur la branche principale
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # ── Login GHCR ───────────────────────────────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        # Pas de push sur les PR, mais le login reste nécessaire pour le build cache
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Build & Push image Docker ─────────────────────────────────────────────
+      - name: Build and push Docker image (FROM scratch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          # Pousser uniquement sur push (pas sur PR)
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Cache de couches Docker via le registry GitHub
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Résumé de l'image publiée ─────────────────────────────────────────────
+      - name: Image digest
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "### Image Docker publiée 🐳" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry :** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags :**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Utilisation :**" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Télécharger/mettre à jour les données IMDb" >> $GITHUB_STEP_SUMMARY
+          echo "docker run --rm \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -v /chemin/local/imdb-data:/data \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --update-data" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "# Renommer les fichiers d'un répertoire" >> $GITHUB_STEP_SUMMARY
+          echo "# Format films    : Titre (Année).ext" >> $GITHUB_STEP_SUMMARY
+          echo "# Format épisodes : S01E01 - Titre.ext" >> $GITHUB_STEP_SUMMARY
+          echo "docker run --rm -it \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -v /chemin/local/imdb-data:/data \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -v /chemin/local/films:/media \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --follow /media" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
