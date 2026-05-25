@@ -160,3 +160,40 @@ pub unsafe fn fst_map_file<P: AsRef<Path>>(path: P) -> Result<fst::Map<Mmap>> {
     })?;
     Ok(map)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{csv_reader_builder, NiceDuration};
+    use std::time::Duration;
+
+    #[test]
+    fn nice_duration_zero() {
+        let nice = NiceDuration(Duration::from_secs(0));
+        assert_eq!(nice.fractional_seconds(), 0.0);
+    }
+
+    #[test]
+    fn nice_duration_one_second() {
+        let nice = NiceDuration(Duration::from_secs(1));
+        assert_eq!(nice.fractional_seconds(), 1.0);
+    }
+
+    #[test]
+    fn nice_duration_fractional() {
+        let nice = NiceDuration(Duration::new(0, 500_000_000));
+        assert_eq!(nice.fractional_seconds(), 0.5);
+    }
+
+    #[test]
+    fn csv_reader_builder_config() {
+        let builder = csv_reader_builder();
+        let data = "col1\tcol2\nval1\tval2\n";
+        let mut rdr = builder.from_reader(data.as_bytes());
+        let headers = rdr.headers().unwrap();
+        assert_eq!(headers, vec!["col1", "col2"]);
+
+        let mut record = csv::StringRecord::new();
+        assert!(rdr.read_record(&mut record).unwrap());
+        assert_eq!(record, vec!["val1", "val2"]);
+    }
+}
