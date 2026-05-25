@@ -211,8 +211,145 @@ impl<T> PartialOrd for Scored<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::Scored;
-    use std::f64::NAN;
+    use super::{Scored, SearchResults};
+    use std::cmp;
+    use std::collections::BinaryHeap;
+    use std::f64::{INFINITY, NEG_INFINITY, NAN};
+
+    #[test]
+    fn search_results_empty() {
+        let results: SearchResults<i32> = SearchResults::new();
+        assert!(results.is_empty());
+        assert_eq!(results.len(), 0);
+        assert!(results.as_slice().is_empty());
+        assert!(results.into_vec().is_empty());
+    }
+
+    #[test]
+    fn search_results_from_min_heap_empty() {
+        let mut heap: BinaryHeap<cmp::Reverse<Scored<i32>>> = BinaryHeap::new();
+        let results = SearchResults::from_min_heap(&mut heap);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_results_from_min_heap_ordering() {
+        let mut heap: BinaryHeap<cmp::Reverse<Scored<i32>>> = BinaryHeap::new();
+        heap.push(cmp::Reverse(Scored::new(1).with_score(1.0)));
+        heap.push(cmp::Reverse(Scored::new(2).with_score(3.0)));
+        heap.push(cmp::Reverse(Scored::new(3).with_score(2.0)));
+        let results = SearchResults::from_min_heap(&mut heap);
+        assert_eq!(results.len(), 3);
+        assert_eq!(results.as_slice()[0].score(), 3.0);
+        assert_eq!(results.as_slice()[1].score(), 2.0);
+        assert_eq!(results.as_slice()[2].score(), 1.0);
+    }
+
+    #[test]
+    fn search_results_normalize_empty() {
+        let mut results: SearchResults<i32> = SearchResults::new();
+        results.normalize();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_results_normalize_all_zero() {
+        let mut results = SearchResults::new();
+        results.push(Scored::new(1).with_score(0.0));
+        results.push(Scored::new(2).with_score(0.0));
+        results.normalize();
+        assert_eq!(results.as_slice()[0].score(), 0.0);
+        assert_eq!(results.as_slice()[1].score(), 0.0);
+    }
+
+    #[test]
+    fn search_results_normalize_typical() {
+        let mut results = SearchResults::new();
+        results.push(Scored::new(1).with_score(10.0));
+        results.push(Scored::new(2).with_score(5.0));
+        results.normalize();
+        assert_eq!(results.as_slice()[0].score(), 1.0);
+        assert_eq!(results.as_slice()[1].score(), 0.5);
+    }
+
+    #[test]
+    fn search_results_trim_boundaries() {
+        let mut results = SearchResults::new();
+        results.push(Scored::new(1).with_score(3.0));
+        results.push(Scored::new(2).with_score(2.0));
+        results.push(Scored::new(3).with_score(1.0));
+
+        let mut r = results.clone();
+        r.trim(0);
+        assert_eq!(r.len(), 0);
+
+        let mut r = results.clone();
+        r.trim(3);
+        assert_eq!(r.len(), 3);
+        assert_eq!(r.as_slice()[2].score(), 1.0);
+
+        let mut r = results.clone();
+        r.trim(10);
+        assert_eq!(r.len(), 3);
+    }
+
+    #[test]
+    fn search_results_rescore_empty() {
+        let mut results: SearchResults<i32> = SearchResults::new();
+        results.rescore(|_| 1.0);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_results_rescore_ties() {
+        let mut results = SearchResults::new();
+        results.push(Scored::new("a").with_score(3.0));
+        results.push(Scored::new("b").with_score(2.0));
+        results.rescore(|_| 1.0);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results.as_slice()[0].score(), 1.0);
+        assert_eq!(results.as_slice()[1].score(), 1.0);
+    }
+
+    #[test]
+    fn search_results_push_tie() {
+        let mut results = SearchResults::new();
+        results.push(Scored::new(1).with_score(2.0));
+        results.push(Scored::new(2).with_score(2.0));
+        assert_eq!(results.len(), 2);
+        assert_eq!(results.as_slice()[0].score(), 2.0);
+        assert_eq!(results.as_slice()[1].score(), 2.0);
+    }
+
+    #[test]
+    fn scored_ordering_tie() {
+        let a = Scored::new(1).with_score(5.0);
+        let b = Scored::new(2).with_score(5.0);
+        assert_eq!(a.cmp(&b), cmp::Ordering::Equal);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn scored_map_preserves_score() {
+        let s = Scored::new(5).with_score(3.14);
+        let mapped = s.map(|v| v * 2);
+        assert_eq!(mapped.score(), 3.14);
+        assert_eq!(*mapped.value(), 10);
+    }
+
+    #[test]
+    fn scored_into_pair() {
+        let s = Scored::new("hello").with_score(2.0);
+        let (score, value) = s.into_pair();
+        assert_eq!(score, 2.0);
+        assert_eq!(value, "hello");
+    }
+
+    #[test]
+    fn scored_into_value() {
+        let s = Scored::new(42).with_score(1.0);
+        assert_eq!(s.into_value(), 42);
+    }
 
     #[test]
     #[should_panic]
@@ -230,5 +367,29 @@ mod tests {
     #[should_panic]
     fn never_nan_3() {
         Scored::new(()).map_score(|_| NAN);
+    }
+
+    #[test]
+    #[should_panic]
+    fn never_infinite_1() {
+        Scored::new(()).set_score(INFINITY);
+    }
+
+    #[test]
+    #[should_panic]
+    fn never_infinite_2() {
+        Scored::new(()).set_score(NEG_INFINITY);
+    }
+
+    #[test]
+    #[should_panic]
+    fn never_infinite_3() {
+        Scored::new(()).with_score(INFINITY);
+    }
+
+    #[test]
+    #[should_panic]
+    fn never_infinite_4() {
+        Scored::new(()).map_score(|_| INFINITY);
     }
 }
